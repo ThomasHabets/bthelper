@@ -1,0 +1,13 @@
+[Unit]
+Description=Bluetooth ssh
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+ExecStart=/usr/local/bin/bt-listener -c 3 -t 127.0.0.1:22
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target

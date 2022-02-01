@@ -10,9 +10,10 @@ SSH Helper program so that you can SSH over bluetooth. This can be a useful
 second way in in case you have a raspberry pi with broken network or firewall
 config.
 
-[Related blog posts][blog] that describes a more full setup guide.
+[Related blog posts][blog] that describes a more full setup guide, including
+pairing.
 
-## Example usage
+## Example usage assuming you've already paired devices
 
 ### On the server
 
