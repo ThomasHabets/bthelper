@@ -1,4 +1,4 @@
-# SSH Bluetooth helper
+# Bluetooth helper
 
 https://github.com/ThomasHabets/bthelper
 
