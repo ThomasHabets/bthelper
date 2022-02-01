@@ -1,7 +1,7 @@
 AC_PREREQ(2.61)
-AC_INIT(sshbthelper, 0.01, thomas@habets.se)
+AC_INIT(bthelper, 0.01, thomas@habets.se)
 AC_CANONICAL_SYSTEM
-AC_CONFIG_SRCDIR([src/sshbthelper.cc])
+AC_CONFIG_SRCDIR([src/bt-connecter.cc])
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AM_MAINTAINER_MODE
 AC_CONFIG_HEADER(src/config.h)

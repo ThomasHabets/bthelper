@@ -2,7 +2,7 @@ AUTOMAKE_OPTIONS=foreign
 DISTCLEANFILES=*~
 AM_CPPFLAGS=-I$(builddir)
 
-bin_PROGRAMS=sshbthelper
+bin_PROGRAMS=bt-connecter
 
-sshbthelper_SOURCES=\
-src/sshbthelper.cc
+bt_connecter_SOURCES=\
+src/bt-connecter.cc
