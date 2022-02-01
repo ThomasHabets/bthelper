@@ -16,9 +16,11 @@ limitations under the License.
 
 #include "common.h"
 
+#include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cinttypes>
 #include <iostream>
 #include <string>
@@ -35,14 +37,91 @@ void usage(const char* av0, int err)
     exit(err);
 }
 
-void connection(int sock)
+std::pair<std::string, std::string> hostport_split(const std::string& in)
 {
-    if (!set_nonblock(STDIN_FILENO) || !set_nonblock(STDOUT_FILENO)
-        || !set_nonblock(sock)) {
+    const auto count = std::count(in.begin(), in.end(), ':');
+    if (count == 0) {
+        return { "", "" };
+    }
+
+    if (count == 1) {
+        // IPv4 or hostname and port.
+        const auto pos = in.find(':');
+        return { in.substr(0, pos), in.substr(pos + 1) };
+    }
+
+    // More than one colon. IPv6 address. E.g. [::1]:22
+    const auto pos = in.find_last_of(":");
+    const auto host1 = in.substr(0, pos);
+    const auto port = in.substr(pos + 1);
+    if (host1.size() <= 2) {
+        return { "", "" };
+    }
+    if (host1[0] != '[') {
+        return { "", "" };
+    }
+    if (host1[host1.size() - 1] != ']') {
+        return { "", "" };
+    }
+    return { host1.substr(1, host1.size() - 2), port };
+}
+
+int tcp_connect(const std::string& target)
+{
+    const auto hostport = hostport_split(target);
+    const auto host = hostport.first;
+    const auto port = hostport.second;
+    if (host.empty() || port.empty()) {
+        std::cerr << "Failed to parse " << target << "\n";
+        return -1;
+    }
+    if (false) {
+        std::cerr << "Host and port: <" << host << "> & <" << port << ">\n";
+    }
+
+    struct addrinfo hints {
+    };
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    // hints.ai_flags = A
+    struct addrinfo* addrs;
+    if (getaddrinfo(host.c_str(), port.c_str(), &hints, &addrs)) {
+        perror("getaddrinfo()");
+        return -1;
+    }
+
+    int sock = -1;
+    for (struct addrinfo* ai = addrs; ai; ai = ai->ai_next) {
+        int s = socket(ai->ai_family, SOCK_STREAM, 0);
+        if (s == -1) {
+            continue;
+        }
+        if (!connect(s, ai->ai_addr, ai->ai_addrlen)) {
+            sock = s;
+            break;
+        }
+    }
+    return sock;
+}
+
+void connection(int sock, const std::string& target)
+{
+    int ar = STDIN_FILENO;
+    int aw = STDOUT_FILENO;
+
+    if (!target.empty()) {
+        ar = aw = tcp_connect(target);
+        if (ar == -1) {
+            std::cerr << "Failed to connect\n";
+            exit(1);
+        }
+    }
+
+    if (!set_nonblock(ar) || !set_nonblock(aw) || !set_nonblock(sock)) {
         exit(1);
     }
 
-    if (!shuffle(STDIN_FILENO, STDOUT_FILENO, sock)) {
+    if (!shuffle(ar, aw, sock)) {
         std::cerr << "Connection failed\n";
     }
 }
@@ -55,7 +134,7 @@ int main(int argc, char** argv)
 
     {
         int opt;
-        while ((opt = getopt(argc, argv, "c:h")) != -1) {
+        while ((opt = getopt(argc, argv, "c:ht:")) != -1) {
             switch (opt) {
             case 'h':
                 usage(argv[0], EXIT_SUCCESS);
@@ -86,10 +165,6 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    if (!target.empty()) {
-        std::cerr << argv[0] << ": -t not yet implemented\n";
-        exit(EXIT_FAILURE);
-    }
     if (channel < 0) {
         std::cerr << argv[0] << ": channel (-c) not specified\n";
         exit(EXIT_FAILURE);
@@ -118,6 +193,6 @@ int main(int argc, char** argv)
         socklen_t socklen = sizeof(raddr);
         int con = accept(sock, reinterpret_cast<sockaddr*>(&raddr), &socklen);
         // TODO: fork.
-        connection(con);
+        connection(con, target);
     }
 }

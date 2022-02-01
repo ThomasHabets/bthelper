@@ -39,8 +39,6 @@ bool parse_addr(const std::string& in, bdaddr_t* out);
 
 bool set_nonblock(int fd);
 
-std::vector<char> do_read(int fd);
-std::vector<char> do_write(int fd, const std::vector<char>& data);
 bool shuffle(int ar, int aw, int b);
 std::pair<int, bool> xatoi(const char* v);
 

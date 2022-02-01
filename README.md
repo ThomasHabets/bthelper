@@ -19,20 +19,20 @@ Related blog posts:
 ### On the server
 
 ```
-rfcomm watch hci0 2 socat TCP:127.0.0.1:22 file:/proc/self/fd/6,b115200,raw,echo=0
+bt-listener -t localhost:22 -c 2
 ```
 
 ### On the client
 
 ```
-ssh -oProxyCommand="sshbthepler AA:BB:CC:XX:YY:ZZ 2" myhostname-console
+ssh -oProxyCommand="bt-connecter AA:BB:CC:XX:YY:ZZ 2" myhostname-console
 ```
 
 Or in `~/.ssh/config`:
 
 ```
 Host myhostname-console
-    ProxyCommand sshbthelper AA:BB:CC:XX:YY:ZZ 2
+    ProxyCommand bt-connecter AA:BB:CC:XX:YY:ZZ 2
 ```
 
 And then just `ssh myhostname-console`.

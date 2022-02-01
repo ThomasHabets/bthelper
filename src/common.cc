@@ -4,6 +4,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <cstring>
+#include <iostream>
+#include <tuple>
 
 
 namespace bthelper {
@@ -37,30 +40,26 @@ bool set_nonblock(int fd)
     return true;
 }
 
-std::vector<char> do_read(int fd)
+std::pair<std::vector<char>, int> do_read(int fd)
 {
     constexpr size_t read_size = 128;
     std::vector<char> ret;
     ret.resize(read_size);
     const auto s = read(fd, ret.data(), ret.size());
     if (s < 0) {
-        perror("read()");
-        exit(1); // TODO: return value.
-        return {};
+        return { {}, errno };
     }
     ret.resize(s);
-    return ret;
+    return { ret, 0 };
 }
 
-std::vector<char> do_write(int fd, const std::vector<char>& data)
+std::pair<std::vector<char>, int> do_write(int fd, const std::vector<char>& data)
 {
     const auto rc = write(fd, data.data(), data.size());
     if (rc < 0) {
-        perror("write()");
-        exit(1); // TODO: return value.
-        return data;
+        return { data, errno };
     }
-    return { data.begin() + rc, data.end() };
+    return { { data.begin() + rc, data.end() }, 0 };
 }
 
 std::pair<int, bool> xatoi(const char* v)
@@ -113,17 +112,25 @@ bool shuffle(int ar, int aw, int b)
             return false;
         }
 
+        int err;
         if (de_a.empty() && FD_ISSET(ar, &rfds)) {
-            de_a = do_read(ar);
+            std::tie(de_a, err) = do_read(ar);
         }
         if (de_b.empty() && FD_ISSET(b, &rfds)) {
-            de_b = do_read(b);
+            std::tie(de_b, err) = do_read(b);
         }
         if (!de_a.empty() && FD_ISSET(b, &wfds)) {
-            de_a = do_write(b, de_a);
+            std::tie(de_a, err) = do_write(b, de_a);
         }
         if (!de_b.empty() && FD_ISSET(aw, &wfds)) {
-            de_b = do_write(aw, de_b);
+            std::tie(de_b, err) = do_write(aw, de_b);
+        }
+        if (err) {
+            if (err == ECONNRESET) {
+                return true;
+            }
+            std::cerr << strerror(err) << "\n";
+            return false;
         }
     }
 }
