@@ -10,9 +10,7 @@ SSH Helper program so that you can SSH over bluetooth. This can be a useful
 second way in in case you have a raspberry pi with broken network or firewall
 config.
 
-Related blog posts:
-* [Raspberry pi bluetooth console](https://blog.habets.se/2022/01/Raspberry-Pi-Bluetooth-console.html)
-* [SSH over bluetooth](https://blog.habets.se/2022/01/SSH-over-Bluetooth.html)
+[Related blog posts][blog] that describes a more full setup guide.
 
 ## Example usage
 
@@ -36,3 +34,5 @@ Host myhostname-console
 ```
 
 And then just `ssh myhostname-console`.
+
+[blog]: https://blog.habets.se/2022/02/SSH-over-Bluetooth-cleanly.html
