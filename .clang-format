@@ -33,7 +33,7 @@ BraceWrapping:
   BeforeCatch:     false
   BeforeElse:      false
   IndentBraces:    false
-BreakBeforeBinaryOperators: None
+BreakBeforeBinaryOperators: true
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: false
 BreakAfterJavaFieldAnnotations: false
