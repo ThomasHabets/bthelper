@@ -194,15 +194,22 @@ int handle_exec(int con, std::vector<const char*> exec_args)
     close(amaster);
     const auto rpid = waitpid(pid, &status, 0);
     if (rpid != pid) {
-        std::cerr << "waitpid(): failed " << strerror(errno) << "\n";
+        std::cerr << "waitpid(): " << strerror(errno) << "\n";
         return EXIT_FAILURE;
     }
 
-    if (!WIFEXITED(status)) {
-        std::cerr << "waitpid(): did not fail normally\n";
+    if (WIFEXITED(status)) {
+        return WEXITSTATUS(status);
+    }
+
+    if (WIFSIGNALED(status)) {
+        std::cerr << "Child process terminated due to signal: "
+                  << strsignal(WTERMSIG(status)) << "\n";
         return EXIT_FAILURE;
     }
-    return WEXITSTATUS(status);
+
+    std::cerr << "waitpid(): Child process failed in unknown way\n";
+    return EXIT_FAILURE;
 }
 
 } // namespace

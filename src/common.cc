@@ -130,24 +130,35 @@ bool shuffle(int ar, int aw, int b)
             return false;
         }
 
-        int err;
-        if (de_a.empty() && FD_ISSET(ar, &rfds)) {
+        int err = 0;
+        std::string op;
+        std::string side;
+        if (!err && (de_a.empty() && FD_ISSET(ar, &rfds))) {
+            op = "read";
+            side = "a";
             std::tie(de_a, err) = do_read(ar);
         }
-        if (de_b.empty() && FD_ISSET(b, &rfds)) {
+        if (!err && (de_b.empty() && FD_ISSET(b, &rfds))) {
+            op = "read";
+            side = "b";
             std::tie(de_b, err) = do_read(b);
         }
-        if (!de_a.empty() && FD_ISSET(b, &wfds)) {
+        if (!err && (!de_a.empty() && FD_ISSET(b, &wfds))) {
+            op = "write";
+            side = "b";
             std::tie(de_a, err) = do_write(b, de_a);
         }
-        if (!de_b.empty() && FD_ISSET(aw, &wfds)) {
+        if (!err && (!de_b.empty() && FD_ISSET(aw, &wfds))) {
+            op = "write";
+            side = "a";
             std::tie(de_b, err) = do_write(aw, de_b);
         }
         if (err) {
             if (err == ECONNRESET) {
                 return true;
             }
-            std::cerr << strerror(err) << "\n";
+            std::cerr << "shuffle: op=" << op << " side=" << side << ": " << strerror(err)
+                      << "\n";
             return false;
         }
     }
