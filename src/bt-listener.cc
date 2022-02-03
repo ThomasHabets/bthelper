@@ -284,13 +284,16 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
+    if (verbose) {
+        std::cerr << "Listening…\n";
+    }
     for (;;) {
         struct sockaddr_rc raddr {
         };
         socklen_t socklen = sizeof(raddr);
         const int con = accept(sock, reinterpret_cast<sockaddr*>(&raddr), &socklen);
         if (verbose) {
-            std::cerr << "Client connected\n";
+            std::cerr << "Client connected: " << stringify_addr(&raddr.rc_bdaddr) << "\n";
         }
         // TODO: log remote address
         // TODO: fork.

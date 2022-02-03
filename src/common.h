@@ -36,6 +36,7 @@ struct sockaddr_rc {
 constexpr int BTPROTO_RFCOMM = 3;
 
 bool parse_addr(const std::string& in, bdaddr_t* out);
+std::string stringify_addr(const bdaddr_t* out);
 
 bool set_nonblock(int fd);
 
