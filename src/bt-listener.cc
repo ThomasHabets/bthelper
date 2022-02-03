@@ -86,7 +86,7 @@ int tcp_connect(const std::string& target)
         std::cerr << "Failed to parse " << target << "\n";
         return -1;
     }
-    if (false) {
+    if (verbose > 1) {
         std::cerr << "Host and port: <" << host << "> & <" << port << ">\n";
     }
 
