@@ -39,8 +39,11 @@ And then just `ssh myhostname-console`.
 ## Example for console, not SSH
 
 ```
-bt-listener -c 5 -e -- getty '{}' --login-options '-h {addr}'
+bt-listener -c 5 -e -- getty '{}' -E -H '{addr}'
 ```
+
+'{}' and '{addr}' are treated special and should be written exactly as
+is.
 
 ```
 bt-connecter -t AA:BB:CC:XX:YY:ZZ 5

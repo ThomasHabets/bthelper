@@ -162,13 +162,6 @@ std::vector<const char*> exec_c_args(const std::vector<std::string>& in)
     return ret;
 }
 
-int exec_child(const std::vector<std::string>& exec_args)
-{
-    const auto args = exec_c_args(exec_args);
-    execvp(args[0], const_cast<char* const*>(&args[0]));
-    perror("exec()");
-    return EXIT_FAILURE;
-}
 
 std::string subst(const std::string& from, const std::string& to, std::string s)
 {
@@ -193,6 +186,25 @@ std::vector<std::string> substitute_args(const std::vector<std::string>& in,
 }
 
 
+int exec_child(const std::vector<std::string>& exec_args, const std::string& addr)
+{
+    const auto tty = xttyname(0);
+    const auto args = substitute_args(exec_args, tty, addr);
+    struct termios tio {
+    };
+    cfmakeraw(&tio);
+    if (tcsetattr(0, TCSADRAIN, &tio)) {
+        std::cerr << "tcsetattr(raw)\n";
+        exit(EXIT_FAILURE);
+    }
+
+    const auto cargs = exec_c_args(args);
+    execvp(cargs[0], const_cast<char* const*>(&cargs[0]));
+    perror("exec()");
+    return EXIT_FAILURE;
+}
+
+
 int handle_exec(int con,
                 const std::vector<std::string>& exec_args,
                 const std::string& addr)
@@ -206,16 +218,7 @@ int handle_exec(int con,
 
     if (!pid) {
         close(con);
-        const auto tty = xttyname(0);
-        const auto args = substitute_args(exec_args, tty, addr);
-        struct termios tio {
-        };
-        cfmakeraw(&tio);
-        if (tcsetattr(0, TCSADRAIN, &tio)) {
-            std::cerr << "tcsetattr(raw)\n";
-            exit(EXIT_FAILURE);
-        }
-        exec_child(args);
+        exec_child(exec_args, addr);
     }
     if (!shuffle(amaster, amaster, con)) {
         std::cerr << "Connection failed\n";
