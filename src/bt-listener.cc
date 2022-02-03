@@ -112,6 +112,7 @@ int tcp_connect(const std::string& target)
             break;
         }
     }
+    freeaddrinfo(addrs);
     return sock;
 }
 
