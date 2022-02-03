@@ -137,8 +137,9 @@ int main(int argc, char** argv)
     }
 
     // Start copying data.
-    const auto ret = shuffle(STDIN_FILENO, STDOUT_FILENO, sock, escape) ? EXIT_SUCCESS
-                                                                        : EXIT_FAILURE;
+    const auto ret = shuffle(STDIN_FILENO, STDOUT_FILENO, sock, do_terminal ? escape : -1)
+                         ? EXIT_SUCCESS
+                         : EXIT_FAILURE;
     if (reset_terminal) {
         if (tcsetattr(0, TCSADRAIN, &orig_tio)) {
             perror("tcsetattr(reset)");
