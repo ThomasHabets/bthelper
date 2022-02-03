@@ -38,7 +38,8 @@ limitations under the License.
 using namespace bthelper;
 
 namespace {
-const std::string escape_word = "{}";
+const std::string escape_term = "{}";
+const std::string escape_addr = "{addr}";
 int verbose = 0;
 
 void usage(const char* av0, int err)
@@ -151,15 +152,50 @@ void connection(int sock, const std::string& target)
     }
 }
 
-int exec_child(std::vector<const char*> exec_args)
+std::vector<const char*> exec_c_args(const std::vector<std::string>& in)
 {
-    exec_args.push_back(nullptr);
-    execvp(exec_args[0], const_cast<char* const*>(&exec_args[0]));
+    std::vector<const char*> ret;
+    for (const auto& s : in) {
+        ret.push_back(s.c_str());
+    }
+    ret.push_back(nullptr);
+    return ret;
+}
+
+int exec_child(const std::vector<std::string>& exec_args)
+{
+    const auto args = exec_c_args(exec_args);
+    execvp(args[0], const_cast<char* const*>(&args[0]));
     perror("exec()");
     return EXIT_FAILURE;
 }
 
-int handle_exec(int con, std::vector<const char*> exec_args)
+std::string subst(const std::string& from, const std::string& to, std::string s)
+{
+    for (;;) {
+        auto pos = s.find(from);
+        if (pos == -1) {
+            return s;
+        }
+        s = s.substr(0, pos) + to + s.substr(pos + from.size());
+    }
+}
+
+std::vector<std::string> substitute_args(const std::vector<std::string>& in,
+                                         const std::string& term,
+                                         const std::string& addr)
+{
+    std::vector<std::string> ret;
+    for (const auto& s : in) {
+        ret.push_back(subst(escape_term, term, subst(escape_addr, addr, s)));
+    }
+    return ret;
+}
+
+
+int handle_exec(int con,
+                const std::vector<std::string>& exec_args,
+                const std::string& addr)
 {
     int amaster;
     const auto pid = forkpty(&amaster, NULL, NULL, NULL);
@@ -171,11 +207,7 @@ int handle_exec(int con, std::vector<const char*> exec_args)
     if (!pid) {
         close(con);
         const auto tty = xttyname(0);
-        for (int i = 0; i < exec_args.size(); i++) {
-            if (exec_args[i] == escape_word) {
-                exec_args[i] = tty.c_str();
-            }
-        }
+        const auto args = substitute_args(exec_args, tty, addr);
         struct termios tio {
         };
         cfmakeraw(&tio);
@@ -183,9 +215,7 @@ int handle_exec(int con, std::vector<const char*> exec_args)
             std::cerr << "tcsetattr(raw)\n";
             exit(EXIT_FAILURE);
         }
-        execvp(exec_args[0], const_cast<char* const*>(&exec_args[0]));
-        perror("exec()");
-        exit(EXIT_FAILURE);
+        exec_child(args);
     }
     if (!shuffle(amaster, amaster, con)) {
         std::cerr << "Connection failed\n";
@@ -254,7 +284,7 @@ int main(int argc, char** argv)
             }
         }
     }
-    std::vector<const char*> exec_args;
+    std::vector<std::string> exec_args;
     if (do_exec) {
         if (optind == argc) {
             std::cerr << argv[0] << ": -e specified but no command line given\n";
@@ -300,13 +330,14 @@ int main(int argc, char** argv)
         };
         socklen_t socklen = sizeof(raddr);
         const int con = accept(sock, reinterpret_cast<sockaddr*>(&raddr), &socklen);
+        const auto remote = stringify_addr(&raddr.rc_bdaddr);
         if (verbose) {
-            std::cerr << "Client connected: " << stringify_addr(&raddr.rc_bdaddr) << "\n";
+            std::cerr << "Client connected: " << remote << "\n";
         }
         // TODO: log remote address
         // TODO: fork.
         if (do_exec) {
-            handle_exec(con, exec_args);
+            handle_exec(con, exec_args, remote);
         } else {
             connection(con, target);
         }

@@ -39,7 +39,7 @@ And then just `ssh myhostname-console`.
 ## Example for console, not SSH
 
 ```
-bt-listener -c 5 -e -- getty '{}'
+bt-listener -c 5 -e -- getty '{}' --login-options '-h {addr}'
 ```
 
 ```
