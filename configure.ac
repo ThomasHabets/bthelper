@@ -18,6 +18,8 @@ PKG_PROG_PKG_CONFIG
 
 # Check for libraries.
 AC_LANG_CPLUSPLUS
+AC_CHECK_LIB([util], [forkpty])
+
 # Output
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

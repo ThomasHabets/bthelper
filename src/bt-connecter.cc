@@ -18,30 +18,53 @@ limitations under the License.
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <signal.h>
+#include <termios.h>
 #include <unistd.h>
+
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <stdexcept>
 #include <vector>
 
 using namespace bthelper;
 
 namespace {
+struct termios orig_tio;
+sig_atomic_t reset_terminal = 0;
+void sigint_handler(int)
+{
+    if (reset_terminal) {
+        tcsetattr(0, TCSADRAIN, &orig_tio);
+    }
+    exit(1);
+}
+
 void usage(const char* av0, int err)
 {
-    fprintf(stderr, "Usage: %s [ -h ] <bluetooth destination> <channel>\n", av0);
+    fprintf(stderr,
+            "Usage: %s [ -ht ] <bluetooth destination> <channel>\n"
+            "  Options:\n"
+            "    -h       Show this help\n"
+            "    -t       Use a raw terminal. E.g. when the other side is a getty\n",
+            av0);
     exit(err);
 }
 } // namespace
 
 int main(int argc, char** argv)
 {
+    bool do_terminal = false;
     {
         int opt;
-        while ((opt = getopt(argc, argv, "h")) != -1) {
+        while ((opt = getopt(argc, argv, "ht")) != -1) {
             switch (opt) {
             case 'h':
                 usage(argv[0], EXIT_SUCCESS);
+            case 't':
+                do_terminal = true;
+                break;
             default:
                 usage(argv[0], EXIT_FAILURE);
             }
@@ -73,7 +96,7 @@ int main(int argc, char** argv)
     };
     laddr.rc_family = AF_BLUETOOTH;
     if (bind(sock, reinterpret_cast<sockaddr*>(&laddr), sizeof(laddr))) {
-        perror("Failed to bind");
+        perror("bind()");
         close(sock);
         return EXIT_FAILURE;
     }
@@ -88,14 +111,37 @@ int main(int argc, char** argv)
     }
     addr.rc_channel = channel;
     if (connect(sock, reinterpret_cast<sockaddr*>(&addr), sizeof(addr))) {
-        perror("Failed to connect");
+        perror("connect()");
         return EXIT_FAILURE;
     }
 
-    // Start copying data.
-    if (!set_nonblock(STDIN_FILENO) || !set_nonblock(STDOUT_FILENO)
-        || !set_nonblock(sock)) {
-        return EXIT_FAILURE;
+    if (do_terminal) {
+        if (tcgetattr(0, &orig_tio)) {
+            perror("tcgetattr(stdin)");
+            exit(EXIT_FAILURE);
+        }
+        reset_terminal = 1;
+        signal(SIGINT, sigint_handler);
+
+        struct termios tio;
+        cfmakeraw(&tio);
+        tio.c_lflag &= ~ECHO;
+
+        if (tcsetattr(0, TCSADRAIN, &tio)) {
+            perror("tcsetattr(raw minus echo)");
+            exit(EXIT_FAILURE);
+        }
     }
-    return shuffle(STDIN_FILENO, STDOUT_FILENO, sock) ? EXIT_SUCCESS : EXIT_FAILURE;
+
+    // Start copying data.
+    const auto ret
+        = shuffle(STDIN_FILENO, STDOUT_FILENO, sock) ? EXIT_SUCCESS : EXIT_FAILURE;
+    if (reset_terminal) {
+        if (tcsetattr(0, TCSADRAIN, &orig_tio)) {
+            perror("tcsetattr(reset)");
+            exit(EXIT_FAILURE);
+        }
+        std::cout << "\n";
+    }
+    return ret;
 }

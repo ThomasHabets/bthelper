@@ -36,4 +36,14 @@ Host myhostname-console
 
 And then just `ssh myhostname-console`.
 
+## Example for console, not SSH
+
+```
+bt-listener -c 5 -e -- getty '{}'
+```
+
+```
+bt-connecter -t AA:BB:CC:XX:YY:ZZ 5
+```
+
 [blog]: https://blog.habets.se/2022/02/SSH-over-Bluetooth-cleanly.html

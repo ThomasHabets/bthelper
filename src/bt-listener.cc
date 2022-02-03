@@ -16,12 +16,19 @@ limitations under the License.
 
 #include "common.h"
 
+#include <limits.h>
 #include <netdb.h>
+#include <pty.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <termios.h>
 #include <unistd.h>
+
 #include <algorithm>
+#include <array>
 #include <cinttypes>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -31,9 +38,13 @@ limitations under the License.
 using namespace bthelper;
 
 namespace {
+const std::string escape_word = "{}";
+int verbose = 0;
+
 void usage(const char* av0, int err)
 {
-    fprintf(stderr, "Usage: %s [ -h ] [-t <target> ] -c <channel>\n", av0);
+    fprintf(
+        stderr, "Usage: %s [ -hv ] [ -t <target> ] [ -e <exec> ] -c <channel>\n", av0);
     exit(err);
 }
 
@@ -104,6 +115,24 @@ int tcp_connect(const std::string& target)
     return sock;
 }
 
+
+// ttyname() except with "/dev" stripped.
+std::string xttyname(int fd)
+{
+    char buf[PATH_MAX] = { 0 };
+    const auto err = ttyname_r(fd, buf, sizeof buf);
+    if (err) {
+        fprintf(stderr, "ttyname_r(): %d: %s\n", err, strerror(errno));
+        exit(EXIT_FAILURE);
+    }
+    const std::string s = buf;
+    const std::string prefix = "/dev";
+    if (prefix == s.substr(0, prefix.size())) {
+        return s.substr(prefix.size());
+    }
+    return s;
+}
+
 void connection(int sock, const std::string& target)
 {
     int ar = STDIN_FILENO;
@@ -116,26 +145,79 @@ void connection(int sock, const std::string& target)
             exit(1);
         }
     }
-
-    if (!set_nonblock(ar) || !set_nonblock(aw) || !set_nonblock(sock)) {
-        exit(1);
-    }
-
     if (!shuffle(ar, aw, sock)) {
         std::cerr << "Connection failed\n";
     }
 }
+
+int exec_child(std::vector<const char*> exec_args)
+{
+    exec_args.push_back(nullptr);
+    execvp(exec_args[0], const_cast<char* const*>(&exec_args[0]));
+    perror("exec()");
+    return EXIT_FAILURE;
+}
+
+int handle_exec(int con, std::vector<const char*> exec_args)
+{
+    int amaster;
+    const auto pid = forkpty(&amaster, NULL, NULL, NULL);
+    if (pid == -1) {
+        perror("forkpty()");
+        return EXIT_FAILURE;
+    }
+
+    if (!pid) {
+        close(con);
+        const auto tty = xttyname(0);
+        for (int i = 0; i < exec_args.size(); i++) {
+            if (exec_args[i] == escape_word) {
+                exec_args[i] = tty.c_str();
+            }
+        }
+        struct termios tio;
+        cfmakeraw(&tio);
+        if (tcsetattr(0, TCSADRAIN, &tio)) {
+            std::cerr << "tcsetattr(raw)\n";
+            exit(EXIT_FAILURE);
+        }
+        execvp(exec_args[0], const_cast<char* const*>(&exec_args[0]));
+        perror("exec()");
+        exit(EXIT_FAILURE);
+    }
+    if (!shuffle(amaster, amaster, con)) {
+        std::cerr << "Connection failed\n";
+    }
+    int status;
+    close(con);
+    close(amaster);
+    const auto rpid = waitpid(pid, &status, 0);
+    if (rpid != pid) {
+        std::cerr << "waitpid(): failed " << strerror(errno) << "\n";
+        return EXIT_FAILURE;
+    }
+
+    if (!WIFEXITED(status)) {
+        std::cerr << "waitpid(): did not fail normally\n";
+        return EXIT_FAILURE;
+    }
+    return WEXITSTATUS(status);
+}
+
 } // namespace
 
 int main(int argc, char** argv)
 {
     int channel = -1;
     std::string target;
-
+    bool do_exec = false;
     {
         int opt;
-        while ((opt = getopt(argc, argv, "c:ht:")) != -1) {
+        while ((opt = getopt(argc, argv, "c:ht:e:v")) != -1) {
             switch (opt) {
+            case 'e':
+                do_exec = true;
+                break;
             case 'h':
                 usage(argv[0], EXIT_SUCCESS);
             case 'c': {
@@ -155,14 +237,28 @@ int main(int argc, char** argv)
             case 't':
                 target = optarg;
                 break;
+            case 'v':
+                verbose++;
+                break;
             default:
                 usage(argv[0], EXIT_FAILURE);
             }
         }
     }
-    if (optind != argc) {
-        std::cerr << argv[0] << ": got trailing args on command line\n";
-        exit(EXIT_FAILURE);
+    std::vector<const char*> exec_args;
+    if (do_exec) {
+        if (optind == argc) {
+            std::cerr << argv[0] << ": -e specified but no command line given\n";
+            exit(EXIT_FAILURE);
+        }
+        for (int i = optind; i < argc; i++) {
+            exec_args.push_back(argv[i]);
+        }
+    } else {
+        if (optind != argc) {
+            std::cerr << argv[0] << ": got trailing args on command line\n";
+            exit(EXIT_FAILURE);
+        }
     }
 
     if (channel < 0) {
@@ -191,8 +287,16 @@ int main(int argc, char** argv)
         struct sockaddr_rc raddr {
         };
         socklen_t socklen = sizeof(raddr);
-        int con = accept(sock, reinterpret_cast<sockaddr*>(&raddr), &socklen);
+        const int con = accept(sock, reinterpret_cast<sockaddr*>(&raddr), &socklen);
+        if (verbose) {
+            std::cerr << "Client connected\n";
+        }
+        // TODO: log remote address
         // TODO: fork.
-        connection(con, target);
+        if (do_exec) {
+            handle_exec(con, exec_args);
+        } else {
+            connection(con, target);
+        }
     }
 }

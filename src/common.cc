@@ -78,6 +78,9 @@ std::pair<int, bool> xatoi(const char* v)
 // Return true on success.
 bool shuffle(int ar, int aw, int b)
 {
+    if (!set_nonblock(ar) || !set_nonblock(aw) || !set_nonblock(b)) {
+        return false;
+    }
     std::vector<char> de_a, de_b;
     for (;;) {
         fd_set rfds, wfds, efds;
