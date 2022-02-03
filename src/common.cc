@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstring>
 #include <iomanip>
 #include <iostream>
@@ -89,9 +90,10 @@ std::pair<int, bool> xatoi(const char* v)
 //   b -> aw
 //
 // TODO: this function should return 0 on EOF, but doesn't.
+// If escape is 0-255 and encountered on ar, then return.
 //
 // Return true on success.
-bool shuffle(int ar, int aw, int b)
+bool shuffle(int ar, int aw, int b, int escape)
 {
     if (!set_nonblock(ar) || !set_nonblock(aw) || !set_nonblock(b)) {
         return false;
@@ -137,6 +139,12 @@ bool shuffle(int ar, int aw, int b)
             op = "read";
             side = "a";
             std::tie(de_a, err) = do_read(ar);
+            if (escape >= 0) {
+                auto esc = std::find(de_a.begin(), de_a.end(), static_cast<char>(escape));
+                if (esc != de_a.end()) {
+                    return true;
+                }
+            }
         }
         if (!err && (de_b.empty() && FD_ISSET(b, &rfds))) {
             op = "read";

@@ -40,7 +40,7 @@ std::string stringify_addr(const bdaddr_t* out);
 
 bool set_nonblock(int fd);
 
-bool shuffle(int ar, int aw, int b);
+bool shuffle(int ar, int aw, int b, int escape = -1);
 std::pair<int, bool> xatoi(const char* v);
 
 

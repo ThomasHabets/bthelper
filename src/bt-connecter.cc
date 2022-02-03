@@ -33,6 +33,8 @@ using namespace bthelper;
 namespace {
 struct termios orig_tio;
 sig_atomic_t reset_terminal = 0;
+constexpr uint8_t escape = 0x1d; // ^]
+
 void sigint_handler(int)
 {
     if (reset_terminal) {
@@ -46,8 +48,9 @@ void usage(const char* av0, int err)
     fprintf(stderr,
             "Usage: %s [ -ht ] <bluetooth destination> <channel>\n"
             "  Options:\n"
-            "    -h       Show this help\n"
-            "    -t       Use a raw terminal. E.g. when the other side is a getty\n",
+            "    -h       Show this help.\n"
+            "    -t       Use a raw terminal. E.g. when the other side is a getty.\n"
+            "             Press ^] to abort.\n",
             av0);
     exit(err);
 }
@@ -134,8 +137,8 @@ int main(int argc, char** argv)
     }
 
     // Start copying data.
-    const auto ret
-        = shuffle(STDIN_FILENO, STDOUT_FILENO, sock) ? EXIT_SUCCESS : EXIT_FAILURE;
+    const auto ret = shuffle(STDIN_FILENO, STDOUT_FILENO, sock, escape) ? EXIT_SUCCESS
+                                                                        : EXIT_FAILURE;
     if (reset_terminal) {
         if (tcsetattr(0, TCSADRAIN, &orig_tio)) {
             perror("tcsetattr(reset)");

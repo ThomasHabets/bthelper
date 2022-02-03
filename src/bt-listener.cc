@@ -176,7 +176,8 @@ int handle_exec(int con, std::vector<const char*> exec_args)
                 exec_args[i] = tty.c_str();
             }
         }
-        struct termios tio;
+        struct termios tio {
+        };
         cfmakeraw(&tio);
         if (tcsetattr(0, TCSADRAIN, &tio)) {
             std::cerr << "tcsetattr(raw)\n";
@@ -221,7 +222,7 @@ int main(int argc, char** argv)
     bool do_exec = false;
     {
         int opt;
-        while ((opt = getopt(argc, argv, "c:ht:e:v")) != -1) {
+        while ((opt = getopt(argc, argv, "c:ht:ev")) != -1) {
             switch (opt) {
             case 'e':
                 do_exec = true;
