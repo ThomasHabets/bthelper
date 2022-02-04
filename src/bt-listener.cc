@@ -136,7 +136,7 @@ std::string xttyname(int fd)
     return s;
 }
 
-void connection(int sock, const std::string& target)
+void connection(int sock, std::string_view remote, const std::string& target)
 {
     int ar = STDIN_FILENO;
     int aw = STDOUT_FILENO;
@@ -157,7 +157,7 @@ void connection(int sock, const std::string& target)
     } catch (const std::system_error& e) {
         // Actually a normal way for the connection to end.
         if (e.code() == std::errc::connection_reset) {
-            std::cerr << "<Disconnected>\n\r";
+            std::cerr << remote << " Disconnected\n";
         } else {
             throw;
         }
@@ -218,6 +218,7 @@ int exec_child(const std::vector<std::string>& exec_args, const std::string& add
 
 
 int handle_exec(int con,
+                std::string_view remote,
                 const std::vector<std::string>& exec_args,
                 const std::string& addr)
 {
@@ -253,9 +254,9 @@ int handle_exec(int con,
     } catch (const std::system_error& e) {
         // Actually a normal way for the connection to end, apparently.
         if (e.code() == std::errc::connection_reset) {
-            std::cerr << "<Disconnected>\n\r";
+            std::cerr << remote << " Disconnected\n";
         } else if (e.code() == std::errc::io_error) {
-            std::cerr << "<Terminal closed>\n\r";
+            std::cerr << remote << " Terminal closed\n";
         } else {
             throw;
         }
@@ -373,14 +374,14 @@ int wrapmain(int argc, char** argv)
         const int con = accept(sock, reinterpret_cast<sockaddr*>(&raddr), &socklen);
         const auto remote = stringify_addr(&raddr.rc_bdaddr);
         if (verbose) {
-            std::cerr << "Client connected: " << remote << "\n";
+            std::cerr << remote << " Client connected\n";
         }
         // TODO: log remote address
         // TODO: fork.
         if (do_exec) {
-            handle_exec(con, exec_args, remote);
+            handle_exec(con, remote, exec_args, remote);
         } else {
-            connection(con, target);
+            connection(con, remote, target);
         }
     }
 }
