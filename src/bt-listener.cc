@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 #include "common.h"
+#include "shuffle.h"
 
 #include <limits.h>
 #include <netdb.h>
@@ -147,9 +148,19 @@ void connection(int sock, const std::string& target)
             exit(1);
         }
     }
-    RawBuffer de_a, de_b;
-    if (!shuffle(ar, aw, sock, -1, &de_a, &de_b)) {
-        std::cerr << "Connection failed\n";
+    Shuffler shuf;
+    shuf.copy(ar, sock);
+    shuf.copy(sock, aw);
+
+    try {
+        shuf.run();
+    } catch (const std::system_error& e) {
+        // Actually a normal way for the connection to end.
+        if (e.code() == std::errc::connection_reset) {
+            std::cerr << "<Disconnected>\n\r";
+        } else {
+            throw;
+        }
     }
 }
 
@@ -221,8 +232,7 @@ int handle_exec(int con,
         close(con);
         exec_child(exec_args, addr);
     }
-    RawBuffer de_a;
-    TelnetDecoderBuffer de_b(
+    auto rx = std::make_unique<TelnetDecoderBuffer>(
         [amaster](uint16_t rows, uint16_t cols) {
             struct winsize ws {
             };
@@ -234,12 +244,26 @@ int handle_exec(int con,
         },
         [](uint32_t cookie) { std::cerr << "PING\n"; },
         [](uint32_t cookie) { std::cerr << "PONG\n"; });
-    if (!shuffle(amaster, amaster, con, -1, &de_a, &de_b)) {
-        std::cerr << "Connection failed\n";
+
+    Shuffler shuf;
+    shuf.copy(amaster, con);
+    shuf.copy(con, amaster, std::move(rx));
+    try {
+        shuf.run();
+    } catch (const std::system_error& e) {
+        // Actually a normal way for the connection to end, apparently.
+        if (e.code() == std::errc::connection_reset) {
+            std::cerr << "<Disconnected>\n\r";
+        } else if (e.code() == std::errc::io_error) {
+            std::cerr << "<Terminal closed>\n\r";
+        } else {
+            throw;
+        }
     }
-    int status;
     close(con);
     close(amaster);
+
+    int status;
     const auto rpid = waitpid(pid, &status, 0);
     if (rpid != pid) {
         std::cerr << "waitpid(): " << strerror(errno) << "\n";

@@ -22,6 +22,16 @@ limitations under the License.
 class Buffer
 {
 public:
+    Buffer() = default;
+    virtual ~Buffer() = default;
+    // No copy.
+    Buffer(const Buffer&) = delete;
+    Buffer& operator=(const Buffer&) = delete;
+
+    // Move ok..
+    Buffer(Buffer&&) = default;
+    Buffer& operator=(Buffer&&) = default;
+
     virtual void write(std::string_view sv) = 0;
 
     void write(const std::vector<char>& in)

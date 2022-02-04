@@ -38,25 +38,6 @@ constexpr int BTPROTO_RFCOMM = 3;
 bool parse_addr(const std::string& in, bdaddr_t* out);
 std::string stringify_addr(const bdaddr_t* out);
 
-bool set_nonblock(int fd);
-
-class FDCallback
-{
-public:
-    virtual int fd() const = 0;
-    virtual void callback() = 0;
-};
-
-// TODO: clearly this should now be a class.
-bool shuffle(int ar,
-             int aw,
-             int b,
-             int escape,
-             Buffer* de_a,
-             Buffer* de_b,
-             FDCallback* cb = nullptr);
-
-
 std::pair<int, bool> xatoi(const char* v);
 
 

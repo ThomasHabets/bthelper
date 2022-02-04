@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #include "common.h"
+#include "shuffle.h"
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -24,8 +25,10 @@ limitations under the License.
 #include <termios.h>
 #include <unistd.h>
 
+#include <system_error>
 #include <cstdio>
 #include <cstring>
+#include <ios>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -38,58 +41,6 @@ struct termios orig_tio;
 sig_atomic_t reset_terminal = 0;
 constexpr uint8_t escape = 0x1d; // ^]
 
-class WinchCallback : public FDCallback
-{
-public:
-    WinchCallback(TelnetEncoderBuffer* buf);
-    ~WinchCallback();
-    int fd() const override { return fd_; }
-    void callback() override;
-
-private:
-    int fd_;
-    int terminal_ = 0;
-    TelnetEncoderBuffer* buf_;
-};
-
-WinchCallback::WinchCallback(TelnetEncoderBuffer* buf) : buf_(buf)
-{
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGWINCH);
-    if (-1 == (fd_ = signalfd(-1, &mask, SFD_NONBLOCK))) {
-        throw std::system_error(errno, std::generic_category(), "signalfd()");
-    }
-    if (-1 == sigprocmask(SIG_BLOCK, &mask, nullptr)) {
-        close(fd_);
-        throw std::system_error(errno, std::generic_category(), "sigprocmask()");
-    }
-}
-
-WinchCallback::~WinchCallback() { close(fd_); }
-
-void WinchCallback::callback()
-{
-    struct signalfd_siginfo tmp;
-    if (-1 == read(fd_, &tmp, sizeof tmp)) {
-        perror("read(signalfd)");
-    }
-    struct winsize ws;
-    if (-1 == ioctl(terminal_, TIOCGWINSZ, reinterpret_cast<char*>(&ws))) {
-        perror("ioctl");
-    } else {
-        buf_->window_size(ws.ws_row, ws.ws_col);
-    }
-}
-
-void sigint_handler(int)
-{
-    if (reset_terminal) {
-        tcsetattr(0, TCSADRAIN, &orig_tio);
-    }
-    exit(1);
-}
-
 void usage(const char* av0, int err)
 {
     fprintf(stderr,
@@ -101,6 +52,52 @@ void usage(const char* av0, int err)
             av0);
     exit(err);
 }
+
+int setup_signalfd()
+{
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGWINCH);
+    const int fd = signalfd(-1, &mask, SFD_NONBLOCK);
+    if (-1 == fd) {
+        throw std::system_error(errno, std::generic_category(), "signalfd()");
+    }
+    if (-1 == sigprocmask(SIG_BLOCK, &mask, nullptr)) {
+        close(fd);
+        throw std::system_error(errno, std::generic_category(), "sigprocmask()");
+    }
+    return fd;
+}
+
+void sigint_handler(int)
+{
+    if (reset_terminal) {
+        tcsetattr(0, TCSADRAIN, &orig_tio);
+    }
+    exit(1);
+}
+
+void send_window(int terminal, TelnetEncoderBuffer* buf)
+{
+    struct winsize ws;
+    if (-1 == ioctl(terminal, TIOCGWINSZ, reinterpret_cast<char*>(&ws))) {
+        perror("ioctl");
+    } else {
+        buf->window_size(ws.ws_row, ws.ws_col);
+    }
+}
+
+void set_raw_terminal(int terminal)
+{
+    struct termios tio;
+    cfmakeraw(&tio);
+    tio.c_lflag &= ~ECHO;
+    if (tcsetattr(terminal, TCSADRAIN, &tio)) {
+        throw std::system_error(
+            errno, std::generic_category(), "tcsetattr(raw minus echo)");
+    }
+}
+
 } // namespace
 
 int wrapmain(int argc, char** argv)
@@ -165,59 +162,41 @@ int wrapmain(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    Buffer* de_a = nullptr;
-    std::unique_ptr<Buffer> raw;
-    std::unique_ptr<TelnetEncoderBuffer> telnet;
-    if (do_terminal) {
-        if (tcgetattr(0, &orig_tio)) {
-            perror("tcgetattr(stdin)");
-            exit(EXIT_FAILURE);
-        }
-        reset_terminal = 1;
+    Shuffler shuf;
 
+    if (do_terminal) {
+        auto txbuf = std::make_unique<TelnetEncoderBuffer>();
+        send_window(STDIN_FILENO, txbuf.get());
+
+        auto sigfd = setup_signalfd();
+        shuf.watch(sigfd, [sigfd, txbuf = txbuf.get()](int) {
+            send_window(STDIN_FILENO, txbuf);
+            struct signalfd_siginfo tmp;
+            if (-1 == read(sigfd, &tmp, sizeof tmp)) {
+                perror("read(signalfd)");
+            }
+        });
 
         signal(SIGINT, sigint_handler);
+        set_raw_terminal(STDIN_FILENO);
 
-        struct termios tio;
-        cfmakeraw(&tio);
-        tio.c_lflag &= ~ECHO;
-
-        if (tcsetattr(0, TCSADRAIN, &tio)) {
-            perror("tcsetattr(raw minus echo)");
-            exit(EXIT_FAILURE);
-        }
-        telnet = std::make_unique<TelnetEncoderBuffer>();
-        struct winsize ws;
-        if (-1 == ioctl(0, TIOCGWINSZ, reinterpret_cast<char*>(&ws))) {
-            perror("ioctl");
-        } else {
-            telnet->window_size(ws.ws_row, ws.ws_col);
-        }
-        de_a = telnet.get();
+        // shuf.copy(sock, STDOUT_FILENO, std::make_unique<TelnetEncoderBuffer>());
+        shuf.copy(sock, STDOUT_FILENO);
+        shuf.copy(STDIN_FILENO, sock, std::move(txbuf), escape);
     } else {
-        raw = std::make_unique<RawBuffer>();
-        de_a = raw.get();
+        shuf.copy(sock, STDOUT_FILENO);
+        shuf.copy(STDIN_FILENO, sock);
     }
 
-    RawBuffer de_b;
-
-    // Start copying data.
-    WinchCallback wcb(telnet.get());
-    const auto ret = shuffle(STDIN_FILENO,
-                             STDOUT_FILENO,
-                             sock,
-                             do_terminal ? escape : -1,
-                             de_a,
-                             &de_b,
-                             &wcb)
-                         ? EXIT_SUCCESS
-                         : EXIT_FAILURE;
-    if (reset_terminal) {
-        if (tcsetattr(0, TCSADRAIN, &orig_tio)) {
-            perror("tcsetattr(reset)");
-            exit(EXIT_FAILURE);
+    try {
+        shuf.run();
+    } catch (const std::system_error& e) {
+        // Actually a normal way for the connection to end.
+        if (e.code() == std::errc::connection_reset) {
+            std::cerr << "<Disconnected>\n\r";
+        } else {
+            throw;
         }
-        std::cout << "\n";
     }
-    return ret;
+    return EXIT_SUCCESS;
 }
