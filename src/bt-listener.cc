@@ -267,7 +267,7 @@ int handle_exec(int con,
     int status;
     const auto rpid = waitpid(pid, &status, 0);
     if (rpid != pid) {
-        std::cerr << "waitpid(): " << strerror(errno) << "\n";
+        std::cerr << remote << " waitpid(): " << strerror(errno) << "\n";
         return EXIT_FAILURE;
     }
 
@@ -276,12 +276,12 @@ int handle_exec(int con,
     }
 
     if (WIFSIGNALED(status)) {
-        std::cerr << "Child process terminated due to signal: "
+        std::cerr << remote << " Child process terminated due to signal: "
                   << strsignal(WTERMSIG(status)) << "\n";
         return EXIT_FAILURE;
     }
 
-    std::cerr << "waitpid(): Child process failed in unknown way\n";
+    std::cerr << remote << " waitpid(): Child process failed in unknown way\n";
     return EXIT_FAILURE;
 }
 
