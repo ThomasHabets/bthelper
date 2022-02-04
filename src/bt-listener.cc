@@ -147,7 +147,8 @@ void connection(int sock, const std::string& target)
             exit(1);
         }
     }
-    if (!shuffle(ar, aw, sock)) {
+    RawBuffer de_a, de_b;
+    if (!shuffle(ar, aw, sock, -1, &de_a, &de_b)) {
         std::cerr << "Connection failed\n";
     }
 }
@@ -220,7 +221,20 @@ int handle_exec(int con,
         close(con);
         exec_child(exec_args, addr);
     }
-    if (!shuffle(amaster, amaster, con)) {
+    RawBuffer de_a;
+    TelnetDecoderBuffer de_b(
+        [amaster](uint16_t rows, uint16_t cols) {
+            struct winsize ws {
+            };
+            ws.ws_row = rows;
+            ws.ws_col = cols;
+            if (-1 == ioctl(amaster, TIOCSWINSZ, &ws)) {
+                perror("ioctl()");
+            }
+        },
+        [](uint32_t cookie) { std::cerr << "PING\n"; },
+        [](uint32_t cookie) { std::cerr << "PONG\n"; });
+    if (!shuffle(amaster, amaster, con, -1, &de_a, &de_b)) {
         std::cerr << "Connection failed\n";
     }
     int status;
@@ -248,7 +262,7 @@ int handle_exec(int con,
 
 } // namespace
 
-int main(int argc, char** argv)
+int wrapmain(int argc, char** argv)
 {
     int channel = -1;
     std::string target;

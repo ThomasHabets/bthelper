@@ -49,4 +49,12 @@ is.
 bt-connecter -t AA:BB:CC:XX:YY:ZZ 5
 ```
 
+## Portability
+
+Code currently relies on `signalfd()`, so it's Linux-only. Should be
+portable to FreeBSD and MacOSX using `kqueue() with EVFILT_SIGNAL`,
+but I don't have a mac to develop it on.
+
+Alternatively we could switch to libevent.
+
 [blog]: https://blog.habets.se/2022/02/SSH-over-Bluetooth-cleanly.html

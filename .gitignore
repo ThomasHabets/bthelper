@@ -20,4 +20,5 @@ libtool
 config.h
 *.o
 stamp-h1
-sshbthelper
+bt-listener
+bt-connecter

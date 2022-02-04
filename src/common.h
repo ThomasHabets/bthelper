@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
+#include "buffer.h"
 #include <sys/socket.h>
 
 #include <cinttypes>
@@ -40,7 +40,23 @@ std::string stringify_addr(const bdaddr_t* out);
 
 bool set_nonblock(int fd);
 
-bool shuffle(int ar, int aw, int b, int escape = -1);
+class FDCallback
+{
+public:
+    virtual int fd() const = 0;
+    virtual void callback() = 0;
+};
+
+// TODO: clearly this should now be a class.
+bool shuffle(int ar,
+             int aw,
+             int b,
+             int escape,
+             Buffer* de_a,
+             Buffer* de_b,
+             FDCallback* cb = nullptr);
+
+
 std::pair<int, bool> xatoi(const char* v);
 
 

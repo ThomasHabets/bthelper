@@ -1,3 +1,4 @@
+#include "buffer.h"
 #include "common.h"
 
 #include <fcntl.h>
@@ -69,13 +70,13 @@ std::pair<std::vector<char>, int> do_read(int fd)
     return { ret, 0 };
 }
 
-std::pair<std::vector<char>, int> do_write(int fd, const std::vector<char>& data)
+std::pair<size_t, int> do_write(int fd, const std::string_view data)
 {
     const auto rc = write(fd, data.data(), data.size());
     if (rc < 0) {
-        return { data, errno };
+        return { 0, errno };
     }
-    return { { data.begin() + rc, data.end() }, 0 };
+    return { rc, 0 };
 }
 
 std::pair<int, bool> xatoi(const char* v)
@@ -85,6 +86,7 @@ std::pair<int, bool> xatoi(const char* v)
     return { ret, !*end };
 }
 
+
 // Copy from a to b, and b to a. Specifically:
 //   ar -> b
 //   b -> aw
@@ -93,12 +95,12 @@ std::pair<int, bool> xatoi(const char* v)
 // If escape is 0-255 and encountered on ar, then return.
 //
 // Return true on success.
-bool shuffle(int ar, int aw, int b, int escape)
+bool shuffle(
+    int ar, int aw, int b, int escape, Buffer* de_a, Buffer* de_b, FDCallback* cb)
 {
     if (!set_nonblock(ar) || !set_nonblock(aw) || !set_nonblock(b)) {
         return false;
     }
-    std::vector<char> de_a, de_b;
     for (;;) {
         fd_set rfds, wfds, efds;
         FD_ZERO(&rfds);
@@ -108,23 +110,43 @@ bool shuffle(int ar, int aw, int b, int escape)
         FD_SET(aw, &efds);
         FD_SET(b, &efds);
 
-        if (de_a.empty()) {
+        int mx = -1;
+
+        if (cb) {
+            const int fd = cb->fd();
+            if (fd != -1) {
+                FD_SET(fd, &rfds);
+            }
+            mx = std::max(mx, fd);
+        }
+
+        if (de_a->empty()) {
             FD_SET(ar, &rfds);
+            mx = std::max(mx, ar);
         } else {
             FD_SET(b, &wfds);
+            mx = std::max(mx, b);
         }
 
-        if (de_b.empty()) {
+        if (de_b->empty()) {
             FD_SET(b, &rfds);
+            mx = std::max(mx, b);
         } else {
             FD_SET(aw, &wfds);
+            mx = std::max(mx, aw);
         }
 
-        const auto rc
-            = select(std::max(std::max(ar, aw), b) + 1, &rfds, &wfds, &efds, NULL);
+        const auto rc = select(mx + 1, &rfds, &wfds, &efds, NULL);
         if (rc < 0) {
             perror("select()");
             return false;
+        }
+
+        if (cb) {
+            const int cbfd = cb->fd();
+            if (cbfd != -1 && FD_ISSET(cbfd, &rfds)) {
+                cb->callback();
+            }
         }
 
         if (FD_ISSET(ar, &efds) || FD_ISSET(aw, &efds) || FD_ISSET(b, &efds)) {
@@ -135,31 +157,40 @@ bool shuffle(int ar, int aw, int b, int escape)
         int err = 0;
         std::string op;
         std::string side;
-        if (!err && (de_a.empty() && FD_ISSET(ar, &rfds))) {
+        if (!err && (de_a->empty() && FD_ISSET(ar, &rfds))) {
             op = "read";
             side = "a";
-            std::tie(de_a, err) = do_read(ar);
+            std::vector<char> t;
+            std::tie(t, err) = do_read(ar);
+            de_a->write(t);
             if (escape >= 0) {
-                auto esc = std::find(de_a.begin(), de_a.end(), static_cast<char>(escape));
-                if (esc != de_a.end()) {
+                auto buf = de_a->peek();
+                auto esc = std::find(buf.begin(), buf.end(), static_cast<char>(escape));
+                if (esc != buf.end()) {
                     return true;
                 }
             }
         }
-        if (!err && (de_b.empty() && FD_ISSET(b, &rfds))) {
+        if (!err && (de_b->empty() && FD_ISSET(b, &rfds))) {
             op = "read";
             side = "b";
-            std::tie(de_b, err) = do_read(b);
+            std::vector<char> t;
+            std::tie(t, err) = do_read(b);
+            de_b->write(t);
         }
-        if (!err && (!de_a.empty() && FD_ISSET(b, &wfds))) {
+        if (!err && (!de_a->empty() && FD_ISSET(b, &wfds))) {
             op = "write";
             side = "b";
-            std::tie(de_a, err) = do_write(b, de_a);
+            size_t n;
+            std::tie(n, err) = do_write(b, de_a->peek());
+            de_a->ack(n);
         }
-        if (!err && (!de_b.empty() && FD_ISSET(aw, &wfds))) {
+        if (!err && (!de_b->empty() && FD_ISSET(aw, &wfds))) {
             op = "write";
             side = "a";
-            std::tie(de_b, err) = do_write(aw, de_b);
+            size_t n;
+            std::tie(n, err) = do_write(aw, de_b->peek());
+            de_b->ack(n);
         }
         if (err) {
             if (err == ECONNRESET) {
