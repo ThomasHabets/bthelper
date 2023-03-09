@@ -179,7 +179,7 @@ std::string subst(const std::string& from, const std::string& to, std::string s)
 {
     for (;;) {
         auto pos = s.find(from);
-        if (pos == -1) {
+        if (pos == std::string::npos) {
             return s;
         }
         s = s.substr(0, pos) + to + s.substr(pos + from.size());
