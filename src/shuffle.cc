@@ -178,11 +178,9 @@ bool Shuffler::Stream::check_esc()
 #if 0
 int main()
 {
-  Shuffler shuf;
-  shuf.watch(0, [](int fd){
-    std::cout << "Readable\n";
-  });
-  shuf.copy(0, 1);
-  return shuf.run() ? EXIT_SUCCESS : EXIT_FAILURE;
+    Shuffler shuf;
+    shuf.watch(0, [](int fd) { std::cout << "Readable\n"; });
+    shuf.copy(0, 1);
+    shuf.run();
 }
 #endif

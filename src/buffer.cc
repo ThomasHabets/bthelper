@@ -145,11 +145,29 @@ void RawBuffer::write(std::string_view sv)
     data_.insert(data_.end(), sv.begin(), sv.end());
 }
 
-std::string_view RawBuffer::peek() const { return { &data_[0], data_.size() }; }
+std::string_view RawBuffer::peek() const
+{
+    if (data_.empty()) {
+        return {};
+    }
+    return { &data_[0], data_.size() };
+}
 
-std::string_view TelnetEncoderBuffer::peek() const { return { &data_[0], data_.size() }; }
+std::string_view TelnetEncoderBuffer::peek() const
+{
+    if (data_.empty()) {
+        return {};
+    }
+    return { &data_[0], data_.size() };
+}
 
-std::string_view TelnetDecoderBuffer::peek() const { return { &data_[0], data_.size() }; }
+std::string_view TelnetDecoderBuffer::peek() const
+{
+    if (data_.empty()) {
+        return {};
+    }
+    return { &data_[0], data_.size() };
+}
 
 void TelnetEncoderBuffer::ack(size_t n)
 {
