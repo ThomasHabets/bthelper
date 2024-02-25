@@ -15,6 +15,7 @@ limitations under the License.
 */
 #ifndef __INCLUDE_BUFFER_H__
 #define __INCLUDE_BUFFER_H__
+#include <cstdint>
 #include <string_view>
 #include <functional>
 #include <vector>
