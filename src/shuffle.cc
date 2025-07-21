@@ -20,6 +20,7 @@ limitations under the License.
 #include <unistd.h>
 #include <cstdio>
 #include <iostream>
+#include <algorithm>
 #include <stdexcept>
 
 namespace {
