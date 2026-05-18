@@ -22,6 +22,7 @@ limitations under the License.
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
+#include <sys/select.h>
 
 namespace {
 bool set_nonblock(int fd)
