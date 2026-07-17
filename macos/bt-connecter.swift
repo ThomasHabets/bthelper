@@ -4,7 +4,8 @@ import IOBluetooth
 let programName = CommandLine.arguments.first.map { URL(fileURLWithPath: $0).lastPathComponent } ?? "bt-connecter"
 
 func writeError(_ text: String) {
-    FileHandle.standardError.write(Data(text.utf8))
+    let bytes = Array(text.utf8)
+    _ = bytes.withUnsafeBytes { Darwin.write(STDERR_FILENO, $0.baseAddress, $0.count) }
 }
 
 func usage(_ code: Int32) -> Never {
@@ -24,7 +25,7 @@ func normalizeAddress(_ raw: String) -> String? {
     let parts = raw.split(whereSeparator: { $0 == ":" || $0 == "-" }).map(String.init)
     guard parts.count == 6 else { return nil }
     for part in parts {
-        guard part.count == 2, part.allSatisfy({ $0.isHexDigit }) else { return nil }
+        guard part.count == 2, part.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
     }
     return parts.map { $0.uppercased() }.joined(separator: "-")
 }
@@ -37,6 +38,7 @@ func parseChannel(_ raw: String) -> Int? {
 final class Bridge: NSObject, IOBluetoothRFCOMMChannelDelegate {
     private var channel: IOBluetoothRFCOMMChannel?
     private var stdinSource: DispatchSourceRead?
+    private var exitCode: Int32?
     private let stdinQueue = DispatchQueue(label: "bt-connecter.stdin")
 
     func run(address: String, channelID: Int) -> Never {
@@ -57,31 +59,41 @@ final class Bridge: NSObject, IOBluetoothRFCOMMChannelDelegate {
 
     private func startStdin(chunk: Int) {
         let source = DispatchSource.makeReadSource(fileDescriptor: STDIN_FILENO, queue: stdinQueue)
+        var buffer = [UInt8](repeating: 0, count: chunk)
         source.setEventHandler { [weak self] in
             guard let self = self else { return }
-            var buffer = [UInt8](repeating: 0, count: chunk)
-            let count = Darwin.read(STDIN_FILENO, &buffer, chunk)
+            var count = 0
+            repeat {
+                count = Darwin.read(STDIN_FILENO, &buffer, chunk)
+            } while count < 0 && errno == EINTR
             if count > 0 {
                 let payload = Data(buffer[0..<count])
-                DispatchQueue.main.async { self.send(payload) }
+                source.suspend()
+                DispatchQueue.main.async {
+                    self.send(payload)
+                    source.resume()
+                }
             } else {
-                DispatchQueue.main.async { self.finish(0) }
+                let code: Int32 = count == 0 ? 0 : 1
+                source.cancel()
+                DispatchQueue.main.async { self.finish(code) }
             }
         }
-        source.resume()
         stdinSource = source
+        source.resume()
     }
 
     private func send(_ payload: Data) {
         guard let live = channel else { return }
-        var mutable = payload
-        let status = mutable.withUnsafeMutableBytes { raw in
-            live.writeSync(raw.baseAddress, length: UInt16(payload.count))
+        let status = payload.withUnsafeBytes { raw in
+            live.writeSync(UnsafeMutableRawPointer(mutating: raw.baseAddress), length: UInt16(raw.count))
         }
         if status != kIOReturnSuccess { finish(1) }
     }
 
     private func finish(_ code: Int32) -> Never {
+        if let started = exitCode { exit(started) }
+        exitCode = code
         channel?.close()
         exit(code)
     }
@@ -92,7 +104,10 @@ final class Bridge: NSObject, IOBluetoothRFCOMMChannelDelegate {
         var offset = 0
         while offset < dataLength {
             let written = Darwin.write(STDOUT_FILENO, base + offset, dataLength - offset)
-            if written <= 0 { finish(1) }
+            if written <= 0 {
+                if written < 0 && errno == EINTR { continue }
+                finish(1)
+            }
             offset += written
         }
     }
@@ -102,10 +117,15 @@ final class Bridge: NSObject, IOBluetoothRFCOMMChannelDelegate {
     }
 }
 
+signal(SIGPIPE, SIG_IGN)
+
 var positional: [String] = []
 for argument in CommandLine.arguments.dropFirst() {
     if argument == "-h" {
         usage(EXIT_SUCCESS)
+    } else if argument == "-t" {
+        writeError("\(programName): terminal mode (-t) is not implemented\n")
+        usage(EXIT_FAILURE)
     } else if argument.hasPrefix("-") && argument != "-" {
         writeError("\(programName): unknown option: \(argument)\n")
         usage(EXIT_FAILURE)
@@ -125,4 +145,5 @@ guard let channelID = parseChannel(positional[1]) else {
     fail("invalid RFCOMM channel: \(positional[1])")
 }
 
-Bridge().run(address: address, channelID: channelID)
+let bridge = Bridge()
+bridge.run(address: address, channelID: channelID)

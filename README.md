@@ -62,8 +62,9 @@ make
 ./bt-connecter AA:BB:CC:XX:YY:ZZ 2
 ```
 
-Building requires the Xcode command line tools (`swiftc`). The binary
-works as an SSH `ProxyCommand` as in the examples above.
+Building requires the Xcode command line tools (`swiftc`). The build
+does not install the binary, so reference it by absolute path in an SSH
+`ProxyCommand` (otherwise it works as in the examples above).
 
 The server side needs no SDP record; the channel is opened directly by
 number. The application running `bt-connecter` (typically the terminal
