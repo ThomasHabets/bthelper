@@ -155,8 +155,8 @@ void connection(int sock, std::string_view remote, const std::string& target)
     if (!target.empty()) {
         ar = aw = tcp_connect(target);
         if (ar == -1) {
-            std::cerr << "Failed to connect\n";
-            exit(1);
+            std::cerr << remote << " Failed to connect to target\n";
+            return;
         }
         tcp_closer.fd = ar;
     }
