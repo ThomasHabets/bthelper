@@ -214,8 +214,8 @@ int exec_child(const std::vector<std::string>& exec_args, const std::string& add
 {
     const auto tty = xttyname(0);
     const auto args = substitute_args(exec_args, tty, addr);
-    struct termios tio {
-    };
+    struct termios tio;
+    if (tcgetattr(0, &tio)) { perror("tcgetattr()"); exit(EXIT_FAILURE); }
     cfmakeraw(&tio);
     if (tcsetattr(0, TCSADRAIN, &tio)) {
         std::cerr << "tcsetattr(raw)\n";
