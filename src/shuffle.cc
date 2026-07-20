@@ -41,7 +41,7 @@ bool set_nonblock(int fd)
 
 std::string do_read(int fd)
 {
-    constexpr size_t read_size = 128;
+    constexpr size_t read_size = 64 * 1024;
     std::vector<char> ret(read_size);
     const auto s = read(fd, ret.data(), ret.size());
     if (s < 0) {
