@@ -169,7 +169,7 @@ void connection(int sock, std::string_view remote, const std::string& target)
         shuf.run();
     } catch (const std::system_error& e) {
         // Actually a normal way for the connection to end.
-        if (e.code() == std::errc::connection_reset) {
+        if (e.code() == std::errc::connection_reset || e.code() == std::errc::broken_pipe) {
             std::cerr << remote << " Disconnected\n";
         } else {
             throw;
@@ -266,7 +266,7 @@ int handle_exec(int con,
         shuf.run();
     } catch (const std::system_error& e) {
         // Actually a normal way for the connection to end, apparently.
-        if (e.code() == std::errc::connection_reset) {
+        if (e.code() == std::errc::connection_reset || e.code() == std::errc::broken_pipe) {
             std::cerr << remote << " Disconnected\n";
         } else if (e.code() == std::errc::io_error) {
             std::cerr << remote << " Terminal closed\n";

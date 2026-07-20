@@ -15,6 +15,7 @@ limitations under the License.
 */
 #include <termios.h>
 #include <unistd.h>
+#include <csignal>
 #include <iostream>
 
 extern int wrapmain(int argc, char** argv);
@@ -47,6 +48,7 @@ void restore_terminal()
 
 int main(int argc, char** argv)
 {
+    signal(SIGPIPE, SIG_IGN);
     save_terminal();
     try {
         try {
