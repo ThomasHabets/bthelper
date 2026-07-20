@@ -136,10 +136,21 @@ std::string xttyname(int fd)
     return s;
 }
 
+namespace {
+struct FdCloser {
+    int fd;
+    ~FdCloser() { if (fd >= 0) close(fd); }
+    FdCloser(const FdCloser&) = delete;
+    FdCloser& operator=(const FdCloser&) = delete;
+};
+}
+
 void connection(int sock, std::string_view remote, const std::string& target)
 {
+    FdCloser sock_closer{ sock };
     int ar = STDIN_FILENO;
     int aw = STDOUT_FILENO;
+    FdCloser tcp_closer{ -1 };
 
     if (!target.empty()) {
         ar = aw = tcp_connect(target);
@@ -147,6 +158,7 @@ void connection(int sock, std::string_view remote, const std::string& target)
             std::cerr << "Failed to connect\n";
             exit(1);
         }
+        tcp_closer.fd = ar;
     }
     Shuffler shuf;
     shuf.copy(ar, sock);
