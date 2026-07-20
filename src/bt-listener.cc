@@ -31,6 +31,7 @@ limitations under the License.
 #include <cinttypes>
 #include <cstring>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -273,6 +274,8 @@ int handle_exec(int con,
         } else {
             throw;
         }
+    } catch (const std::runtime_error& e) {
+        std::cerr << remote << " Invalid terminal protocol: " << e.what() << "\n";
     }
     close(con);
     close(amaster);
