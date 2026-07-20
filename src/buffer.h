@@ -97,6 +97,6 @@ private:
     ping_handler_t pong_;
     window_size_handler_t winch_;
     std::vector<char> data_;
-    std::vector<char> iac_buffer_;
+    std::vector<uint8_t> iac_buffer_;
 };
 #endif

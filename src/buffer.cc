@@ -39,7 +39,7 @@ void TelnetDecoderBuffer::write(std::string_view sv)
         { telnet::iac_pong, 6 },
     };
     std::vector<char> to_add;
-    std::vector<char> tbuf = iac_buffer_;
+    std::vector<uint8_t> tbuf = iac_buffer_;
     for (const auto& ch : sv) {
         // Normal data.
         if (tbuf.empty() && (ch != telnet::iac)) {
@@ -48,13 +48,13 @@ void TelnetDecoderBuffer::write(std::string_view sv)
         }
 
         // Add to iac buffer.
-        tbuf.push_back(ch);
+        tbuf.push_back(static_cast<uint8_t>(ch));
         if (tbuf.size() == 1) {
             continue;
         }
 
         // Check if iac buffer is full.
-        const auto type = tbuf[1];
+        const auto type = static_cast<char>(tbuf[1]);
         const auto siz = iac_sizes.find(type);
         if (siz == iac_sizes.end()) {
             throw std::runtime_error("invalid iac");
@@ -66,29 +66,29 @@ void TelnetDecoderBuffer::write(std::string_view sv)
                 break;
             case telnet::iac_ping: {
                 uint32_t cookie = 0;
-                cookie |= tbuf[2] << 24;
-                cookie |= tbuf[3] << 16;
-                cookie |= tbuf[4] << 8;
-                cookie |= tbuf[5];
+                cookie |= static_cast<uint32_t>(tbuf[2]) << 24;
+                cookie |= static_cast<uint32_t>(tbuf[3]) << 16;
+                cookie |= static_cast<uint32_t>(tbuf[4]) << 8;
+                cookie |= static_cast<uint32_t>(tbuf[5]);
                 ping_(cookie);
                 break;
             }
             case telnet::iac_pong: {
                 uint32_t cookie = 0;
-                cookie |= tbuf[2] << 24;
-                cookie |= tbuf[3] << 16;
-                cookie |= tbuf[4] << 8;
-                cookie |= tbuf[5];
+                cookie |= static_cast<uint32_t>(tbuf[2]) << 24;
+                cookie |= static_cast<uint32_t>(tbuf[3]) << 16;
+                cookie |= static_cast<uint32_t>(tbuf[4]) << 8;
+                cookie |= static_cast<uint32_t>(tbuf[5]);
                 pong_(cookie);
                 break;
             }
             case telnet::iac_window_size: {
                 uint16_t rows = 0;
                 uint16_t cols = 0;
-                rows |= tbuf[2] << 8;
-                rows |= tbuf[3];
-                cols |= tbuf[4] << 8;
-                cols |= tbuf[5];
+                rows |= static_cast<uint16_t>(tbuf[2]) << 8;
+                rows |= static_cast<uint16_t>(tbuf[3]);
+                cols |= static_cast<uint16_t>(tbuf[4]) << 8;
+                cols |= static_cast<uint16_t>(tbuf[5]);
                 winch_(rows, cols);
                 break;
             }
