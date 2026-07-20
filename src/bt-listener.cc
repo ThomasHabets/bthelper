@@ -113,6 +113,7 @@ int tcp_connect(const std::string& target)
             sock = s;
             break;
         }
+        close(s);
     }
     freeaddrinfo(addrs);
     return sock;
