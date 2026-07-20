@@ -90,6 +90,8 @@ void send_window(int terminal, TelnetEncoderBuffer* buf)
 void set_raw_terminal(int terminal)
 {
     struct termios tio;
+    if (tcgetattr(terminal, &tio))
+        throw std::system_error(errno, std::generic_category(), "tcgetattr()");
     cfmakeraw(&tio);
     tio.c_lflag &= ~ECHO;
     if (tcsetattr(terminal, TCSADRAIN, &tio)) {
