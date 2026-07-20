@@ -363,7 +363,7 @@ int wrapmain(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    int sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+    int sock = socket(AF_BLUETOOTH, SOCK_STREAM | SOCK_CLOEXEC, BTPROTO_RFCOMM);
 
     // Bind to zeroes.
     struct sockaddr_rc laddr {
