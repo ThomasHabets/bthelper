@@ -39,10 +39,10 @@ bool set_nonblock(int fd)
     return true;
 }
 
-std::string do_read(int fd)
+std::vector<uint8_t> do_read(int fd)
 {
     constexpr size_t read_size = 64 * 1024;
-    std::vector<char> ret(read_size);
+    std::vector<uint8_t> ret(read_size);
     for (;;) {
         const auto s = read(fd, ret.data(), ret.size());
         if (s < 0) {
@@ -52,7 +52,7 @@ std::string do_read(int fd)
             throw std::system_error(errno, std::generic_category(), "read()");
         }
         ret.resize(static_cast<size_t>(s));
-        return { ret.begin(), ret.end() };
+        return ret;
     }
 }
 
@@ -180,7 +180,7 @@ Shuffler::Stream::Stream(int src, int dst, std::shared_ptr<Buffer> buf, std::opt
 {
 }
 
-bool Shuffler::Stream::check_esc(std::string_view input) const
+bool Shuffler::Stream::check_esc(const std::vector<uint8_t>& input) const
 {
     if (!esc_.has_value()) {
         return false;

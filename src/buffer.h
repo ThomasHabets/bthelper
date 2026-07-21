@@ -35,11 +35,11 @@ public:
     Buffer(Buffer&&) = default;
     Buffer& operator=(Buffer&&) = default;
 
-    virtual void write(std::string_view sv) = 0;
+    virtual void write(ustring_view sv) = 0;
 
-    void write(const std::vector<char>& in)
+    void write(const std::vector<uint8_t>& in)
     {
-        write(std::string_view(in.data(), in.size()));
+        write(ustring_view(in.data(), in.size()));
     }
 
     // Invalidated on any non-const
@@ -53,7 +53,7 @@ public:
 class RawBuffer : public Buffer
 {
 public:
-    void write(std::string_view sv) override;
+    void write(ustring_view sv) override;
     ustring_view peek() const override;
     void ack(size_t n) override;
 
@@ -66,7 +66,7 @@ private:
 class TelnetEncoderBuffer : public Buffer
 {
 public:
-    void write(std::string_view sv) override;
+    void write(ustring_view sv) override;
     ustring_view peek() const override;
     void ack(size_t n) override;
 
@@ -90,7 +90,7 @@ public:
     {
     }
 
-    void write(std::string_view sv) override;
+    void write(ustring_view sv) override;
     ustring_view peek() const override;
     void ack(size_t n) override;
 

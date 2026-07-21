@@ -55,7 +55,7 @@ std::vector<uint8_t> unbuild_u32(uint32_t v)
         return {b0,b1,b2, static_cast<uint8_t>(v)};
 }
 
-void TelnetDecoderBuffer::write(std::string_view sv)
+void TelnetDecoderBuffer::write(ustring_view sv)
 {
     static const std::map<uint8_t, size_t> iac_sizes = {
         { telnet::iac, 2 },
@@ -122,7 +122,7 @@ void TelnetDecoderBuffer::write(std::string_view sv)
     data_.insert(data_.end(), to_add.begin(), to_add.end());
 }
 
-void TelnetEncoderBuffer::write(std::string_view sv)
+void TelnetEncoderBuffer::write(ustring_view sv)
 {
     for (const auto& ch2 : sv) {
         const auto ch = static_cast<uint8_t>(ch2);
@@ -161,7 +161,7 @@ void TelnetEncoderBuffer::pong(uint32_t cookie)
     data_.insert(data_.end(), c.begin(), c.end());
 }
 
-void RawBuffer::write(std::string_view sv)
+void RawBuffer::write(ustring_view sv)
 {
     data_.insert(data_.end(), sv.begin(), sv.end());
 }
