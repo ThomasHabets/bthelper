@@ -27,7 +27,7 @@ func normalizeAddress(_ raw: String) -> String? {
     for part in parts {
         guard part.count == 2, part.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
     }
-    return parts.map { $0.uppercased() }.joined(separator: "-")
+    return parts.map { $0.uppercased() }.joined(separator: ":")
 }
 
 func parseChannel(_ raw: String) -> Int? {
