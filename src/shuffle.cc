@@ -116,6 +116,9 @@ void Shuffler::run()
         // select()
         const auto rc = select(mx + 1, &rfds, &wfds, &efds, NULL);
         if (rc < 0) {
+            if (errno == EAGAIN || errno == EINTR) {
+                continue;
+            }
             throw std::system_error(errno, std::generic_category(), "select()");
         }
 
