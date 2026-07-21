@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 #include "buffer.h"
+#include <optional>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -22,7 +23,7 @@ class Shuffler
 public:
     using watch_handler_t = std::function<void(int)>;
 
-    void copy(int src, int dst, std::shared_ptr<Buffer> buf = nullptr, int escape = -1);
+    void copy(int src, int dst, std::shared_ptr<Buffer> buf = nullptr, std::optional<uint8_t> escape = std::nullopt);
     void watch(int fd, watch_handler_t);
     void run();
 
@@ -30,7 +31,7 @@ private:
     class Stream
     {
     public:
-        Stream(int src, int dst, std::shared_ptr<Buffer> buf, int esc);
+        Stream(int src, int dst, std::shared_ptr<Buffer> buf, std::optional<uint8_t> esc);
         int src() const { return src_; }
         int dst() const { return dst_; };
         bool empty() const { return buf_->peek().empty(); }
@@ -44,7 +45,9 @@ private:
         int src_ = -1;
         int dst_ = -1;
         std::shared_ptr<Buffer> buf_;
-        int esc_;
+
+        // Escape character.
+        std::optional<uint8_t> esc_;
     };
 
     struct Watcher {

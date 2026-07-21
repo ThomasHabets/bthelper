@@ -71,7 +71,7 @@ size_t do_write(int fd, const ustring_view data)
 }
 } // namespace
 
-void Shuffler::copy(int src, int dst, std::shared_ptr<Buffer> buf, int esc)
+void Shuffler::copy(int src, int dst, std::shared_ptr<Buffer> buf, std::optional<uint8_t> esc)
 {
     if (!buf) {
         buf = std::make_shared<RawBuffer>();
@@ -175,18 +175,19 @@ void Shuffler::run()
     }
 }
 
-Shuffler::Stream::Stream(int src, int dst, std::shared_ptr<Buffer> buf, int esc)
+Shuffler::Stream::Stream(int src, int dst, std::shared_ptr<Buffer> buf, std::optional<uint8_t> esc)
     : src_(src), dst_(dst), buf_(std::move(buf)), esc_(esc)
 {
 }
 
 bool Shuffler::Stream::check_esc()
 {
-    if (esc_ < 0) {
+    if (!esc_.has_value()) {
         return false;
     }
-    auto b = buf_->peek();
-    return std::find(b.begin(), b.end(), esc_) != b.end();
+    const auto esc = esc_.value();
+    const auto b = buf_->peek();
+    return std::find(b.begin(), b.end(), esc) != b.end();
 }
 
 #if 0
