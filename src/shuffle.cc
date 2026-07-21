@@ -43,21 +43,31 @@ std::string do_read(int fd)
 {
     constexpr size_t read_size = 64 * 1024;
     std::vector<char> ret(read_size);
-    const auto s = read(fd, ret.data(), ret.size());
-    if (s < 0) {
-        throw std::system_error(errno, std::generic_category(), "read()");
+    for (;;) {
+        const auto s = read(fd, ret.data(), ret.size());
+        if (s < 0) {
+            if (errno == EAGAIN || errno == EINTR) {
+                continue;
+            }
+            throw std::system_error(errno, std::generic_category(), "read()");
+        }
+        ret.resize(static_cast<size_t>(s));
+        return { ret.begin(), ret.end() };
     }
-    ret.resize(static_cast<size_t>(s));
-    return { ret.begin(), ret.end() };
 }
 
 size_t do_write(int fd, const ustring_view data)
 {
-    const auto rc = write(fd, data.data(), data.size());
-    if (rc < 0) {
-        throw std::system_error(errno, std::generic_category(), "write()");
+    for (;;) {
+        const auto rc = write(fd, data.data(), data.size());
+        if (rc < 0) {
+            if (errno == EAGAIN || errno == EINTR) {
+                continue;
+            }
+            throw std::system_error(errno, std::generic_category(), "write()");
+        }
+        return static_cast<size_t>(rc);
     }
-    return static_cast<size_t>(rc);
 }
 } // namespace
 
@@ -189,3 +199,6 @@ int main()
     shuf.run();
 }
 #endif
+/*
+ * vim: ts=4 sw=4
+ */
