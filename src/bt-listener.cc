@@ -212,7 +212,7 @@ std::vector<std::string> substitute_args(const std::vector<std::string>& in,
     return ret;
 }
 
-
+[[nodiscard]]
 int exec_child(const std::vector<std::string>& exec_args, const std::string& addr)
 {
     const auto tty = xttyname(0);
@@ -246,7 +246,7 @@ int handle_exec(int con,
 
     if (!pid) {
         close(con);
-        exec_child(exec_args, addr);
+        exit(exec_child(exec_args, addr));
     }
     auto rx = std::make_unique<TelnetDecoderBuffer>(
         [amaster](uint16_t rows, uint16_t cols) {
