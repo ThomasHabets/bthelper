@@ -29,6 +29,7 @@ limitations under the License.
 #include <algorithm>
 #include <array>
 #include <cinttypes>
+#include <csignal>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -226,6 +227,10 @@ int exec_child(const std::vector<std::string>& exec_args, const std::string& add
     }
 
     const auto cargs = exec_c_args(args);
+    if (signal(SIGPIPE, SIG_DFL) == SIG_ERR) {
+        perror("signal(SIGPIPE)");
+        return EXIT_FAILURE;
+    }
     execvp(cargs[0], const_cast<char* const*>(&cargs[0]));
     perror("exec()");
     return EXIT_FAILURE;
