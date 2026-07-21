@@ -34,7 +34,7 @@ private:
         int src() const { return src_; }
         int dst() const { return dst_; };
         bool empty() const { return buf_->peek().empty(); }
-        std::string_view peek() const { return buf_->peek(); }
+        ustring_view peek() const { return buf_->peek(); }
         void write(std::string_view v) { buf_->write(v); }
         void ack(size_t n) { buf_->ack(n); }
         bool check_esc();

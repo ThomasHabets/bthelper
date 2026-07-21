@@ -20,6 +20,8 @@ limitations under the License.
 #include <functional>
 #include <vector>
 
+typedef std::basic_string_view<unsigned char> ustring_view;
+
 class Buffer
 {
 public:
@@ -41,7 +43,7 @@ public:
     }
 
     // Invalidated on any non-const
-    virtual std::string_view peek() const = 0;
+    virtual ustring_view peek() const = 0;
 
     virtual void ack(size_t n) = 0;
 
@@ -52,20 +54,20 @@ class RawBuffer : public Buffer
 {
 public:
     void write(std::string_view sv) override;
-    std::string_view peek() const override;
+    ustring_view peek() const override;
     void ack(size_t n) override;
 
 private:
     // TODO: optimization opportunity: partial consumtion of data could
     // contain an offset into the buffer.
-    std::vector<char> data_;
+    std::vector<uint8_t> data_;
 };
 
 class TelnetEncoderBuffer : public Buffer
 {
 public:
     void write(std::string_view sv) override;
-    std::string_view peek() const override;
+    ustring_view peek() const override;
     void ack(size_t n) override;
 
     void ping(uint32_t cookie);
@@ -73,7 +75,7 @@ public:
     void window_size(uint16_t rows, uint16_t cols);
 
 private:
-    std::vector<char> data_;
+    std::vector<uint8_t> data_;
 };
 
 class TelnetDecoderBuffer : public Buffer
@@ -89,14 +91,14 @@ public:
     }
 
     void write(std::string_view sv) override;
-    std::string_view peek() const override;
+    ustring_view peek() const override;
     void ack(size_t n) override;
 
 private:
     window_size_handler_t winch_;
     ping_handler_t ping_;
     ping_handler_t pong_;
-    std::vector<char> data_;
+    std::vector<uint8_t> data_;
     std::vector<uint8_t> iac_buffer_;
 };
 #endif

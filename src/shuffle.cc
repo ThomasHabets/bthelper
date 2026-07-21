@@ -47,17 +47,17 @@ std::string do_read(int fd)
     if (s < 0) {
         throw std::system_error(errno, std::generic_category(), "read()");
     }
-    ret.resize(s);
+    ret.resize(static_cast<size_t>(s));
     return { ret.begin(), ret.end() };
 }
 
-size_t do_write(int fd, const std::string_view data)
+size_t do_write(int fd, const ustring_view data)
 {
     const auto rc = write(fd, data.data(), data.size());
     if (rc < 0) {
         throw std::system_error(errno, std::generic_category(), "write()");
     }
-    return rc;
+    return static_cast<size_t>(rc);
 }
 } // namespace
 
@@ -130,7 +130,7 @@ void Shuffler::run()
         for (size_t c = 0; c < streams_.size();) {
             auto& s = streams_[c];
             if (FD_ISSET(s.src(), &efds) || FD_ISSET(s.dst(), &efds)) {
-                streams_.erase(streams_.begin() + c);
+                streams_.erase(streams_.begin() + static_cast<ssize_t>(c));
                 continue;
             }
             c++;
@@ -150,7 +150,7 @@ void Shuffler::run()
             if (FD_ISSET(s.src(), &rfds)) {
                 auto buf = do_read(s.src());
                 if (buf.empty()) {
-                    streams_.erase(streams_.begin() + c);
+                    streams_.erase(streams_.begin() + static_cast<ssize_t>(c));
                     continue;
                 }
                 s.write(buf);

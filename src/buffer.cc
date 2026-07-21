@@ -15,6 +15,8 @@ limitations under the License.
 */
 #include "buffer.h"
 
+#include <cstdint>
+#include <climits>
 #include <cassert>
 #include <iostream>
 #include <map>
@@ -30,20 +32,43 @@ constexpr uint8_t iac_pong = 3;
 
 } // namespace
 
+// Integer promotion rules are so stupid.
+uint16_t build_u16(uint8_t high, uint8_t low)
+{
+    uint32_t h = static_cast<uint32_t>(high) << 8;
+    return static_cast<uint16_t>(h) | low;
+}
+
+// Integer promotion rules are so stupid.
+std::pair<uint8_t, uint8_t> unbuild_u16(uint16_t v)
+{
+        uint32_t high = static_cast<uint32_t>(v) >> 8;
+        return {static_cast<uint8_t>(high), static_cast<uint8_t>(v & 0xff)};
+}
+
+// Integer promotion rules are so stupid.
+std::vector<uint8_t> unbuild_u32(uint32_t v)
+{
+        uint8_t b0 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 24);
+        uint8_t b1 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 16);
+        uint8_t b2 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 8);
+        return {b0,b1,b2, static_cast<uint8_t>(v & 0xff)};
+}
+
 void TelnetDecoderBuffer::write(std::string_view sv)
 {
-    static const std::map<char, size_t> iac_sizes = {
+    static const std::map<uint8_t, size_t> iac_sizes = {
         { telnet::iac, 2 },
         { telnet::iac_window_size, 6 },
         { telnet::iac_ping, 6 },
         { telnet::iac_pong, 6 },
     };
-    std::vector<char> to_add;
+    std::vector<uint8_t> to_add;
     std::vector<uint8_t> tbuf = iac_buffer_;
     for (const auto& ch : sv) {
         // Normal data.
         if (tbuf.empty() && (ch != telnet::iac)) {
-            to_add.push_back(ch);
+            to_add.push_back((uint8_t)ch);
             continue;
         }
 
@@ -83,12 +108,8 @@ void TelnetDecoderBuffer::write(std::string_view sv)
                 break;
             }
             case telnet::iac_window_size: {
-                uint16_t rows = 0;
-                uint16_t cols = 0;
-                rows |= static_cast<uint16_t>(tbuf[2]) << 8;
-                rows |= static_cast<uint16_t>(tbuf[3]);
-                cols |= static_cast<uint16_t>(tbuf[4]) << 8;
-                cols |= static_cast<uint16_t>(tbuf[5]);
+                uint16_t rows = build_u16(tbuf[2], tbuf[3]);
+                uint16_t cols = build_u16(tbuf[4], tbuf[5]);
                 winch_(rows, cols);
                 break;
             }
@@ -102,7 +123,8 @@ void TelnetDecoderBuffer::write(std::string_view sv)
 
 void TelnetEncoderBuffer::write(std::string_view sv)
 {
-    for (const auto& ch : sv) {
+    for (const auto& ch2 : sv) {
+        const auto ch = static_cast<uint8_t>(ch2);
         data_.push_back(ch);
         if (ch == telnet::iac) {
             data_.push_back(ch);
@@ -114,30 +136,28 @@ void TelnetEncoderBuffer::window_size(uint16_t rows, uint16_t cols)
 {
     data_.push_back(telnet::iac);
     data_.push_back(telnet::iac_window_size);
-    data_.push_back(0xff & (rows >> 8));
-    data_.push_back(0xff & rows);
-    data_.push_back(0xff & (cols >> 8));
-    data_.push_back(0xff & cols);
+    const auto r = unbuild_u16(rows);
+    data_.push_back(r.first);
+    data_.push_back(r.second);
+    const auto c = unbuild_u16(cols);
+    data_.push_back(c.first);
+    data_.push_back(c.second);
 }
 
 void TelnetEncoderBuffer::ping(uint32_t cookie)
 {
     data_.push_back(telnet::iac);
     data_.push_back(telnet::iac_ping);
-    data_.push_back(0xff & (cookie >> 24));
-    data_.push_back(0xff & (cookie >> 16));
-    data_.push_back(0xff & (cookie >> 8));
-    data_.push_back(0xff & cookie);
+    const auto c = unbuild_u32(cookie);
+    data_.insert(data_.end(), c.begin(), c.end());
 }
 
 void TelnetEncoderBuffer::pong(uint32_t cookie)
 {
     data_.push_back(telnet::iac);
     data_.push_back(telnet::iac_pong);
-    data_.push_back(0xff & (cookie >> 24));
-    data_.push_back(0xff & (cookie >> 16));
-    data_.push_back(0xff & (cookie >> 8));
-    data_.push_back(0xff & cookie);
+    const auto c = unbuild_u32(cookie);
+    data_.insert(data_.end(), c.begin(), c.end());
 }
 
 void RawBuffer::write(std::string_view sv)
@@ -145,7 +165,7 @@ void RawBuffer::write(std::string_view sv)
     data_.insert(data_.end(), sv.begin(), sv.end());
 }
 
-std::string_view RawBuffer::peek() const
+ustring_view RawBuffer::peek() const
 {
     if (data_.empty()) {
         return {};
@@ -153,7 +173,7 @@ std::string_view RawBuffer::peek() const
     return { &data_[0], data_.size() };
 }
 
-std::string_view TelnetEncoderBuffer::peek() const
+ustring_view TelnetEncoderBuffer::peek() const
 {
     if (data_.empty()) {
         return {};
@@ -161,7 +181,7 @@ std::string_view TelnetEncoderBuffer::peek() const
     return { &data_[0], data_.size() };
 }
 
-std::string_view TelnetDecoderBuffer::peek() const
+ustring_view TelnetDecoderBuffer::peek() const
 {
     if (data_.empty()) {
         return {};
@@ -176,7 +196,8 @@ void TelnetEncoderBuffer::ack(size_t n)
                                     + std::to_string(n) + " > "
                                     + std::to_string(data_.size()));
     }
-    data_.erase(data_.begin(), data_.begin() + n);
+    assert(n < SSIZE_MAX);
+    data_.erase(data_.begin(), data_.begin() + static_cast<ssize_t>(n));
 }
 
 void TelnetDecoderBuffer::ack(size_t n)
@@ -186,7 +207,8 @@ void TelnetDecoderBuffer::ack(size_t n)
                                     + std::to_string(n) + " > "
                                     + std::to_string(data_.size()));
     }
-    data_.erase(data_.begin(), data_.begin() + n);
+    assert(n < SSIZE_MAX);
+    data_.erase(data_.begin(), data_.begin() + static_cast<ssize_t>(n));
 }
 
 void RawBuffer::ack(size_t n)
@@ -196,7 +218,8 @@ void RawBuffer::ack(size_t n)
                                     + std::to_string(n) + " > "
                                     + std::to_string(data_.size()));
     }
-    data_.erase(data_.begin(), data_.begin() + n);
+    assert(n < SSIZE_MAX);
+    data_.erase(data_.begin(), data_.begin() + static_cast<ssize_t>(n));
 }
 
 #if 0

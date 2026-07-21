@@ -44,6 +44,7 @@ const std::string escape_term = "{}";
 const std::string escape_addr = "{addr}";
 int verbose = 0;
 
+[[noreturn]]
 void usage(const char* av0, int err)
 {
     fprintf(
@@ -257,8 +258,8 @@ int handle_exec(int con,
                 perror("ioctl()");
             }
         },
-        [](uint32_t cookie) { std::cerr << "PING\n"; },
-        [](uint32_t cookie) { std::cerr << "PONG\n"; });
+        []([[maybe_unused]] uint32_t cookie) { std::cerr << "PING\n"; },
+        []([[maybe_unused]] uint32_t cookie) { std::cerr << "PONG\n"; });
 
     Shuffler shuf;
     shuf.copy(amaster, con);
@@ -369,7 +370,7 @@ int wrapmain(int argc, char** argv)
     struct sockaddr_rc laddr {
     };
     laddr.rc_family = AF_BLUETOOTH;
-    laddr.rc_channel = channel;
+    laddr.rc_channel = static_cast<uint8_t>(channel); // Checked elsewhere.
     if (bind(sock, reinterpret_cast<sockaddr*>(&laddr), sizeof(laddr))) {
         perror("Failed to bind");
         close(sock);

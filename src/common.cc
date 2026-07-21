@@ -11,6 +11,7 @@
 #include <iostream>
 #include <sstream>
 #include <tuple>
+#include <climits>
 
 
 namespace bthelper {
@@ -46,8 +47,14 @@ std::string stringify_addr(const bdaddr_t* in)
 std::pair<int, bool> xatoi(const char* v)
 {
     char* end = nullptr;
-    int ret = strtol(v, &end, 0);
-    return { ret, !*end };
+    const long ret = strtol(v, &end, 0);
+    if (ret > INT_MAX) {
+            return { 0, false };
+    }
+    if (ret < INT_MIN) {
+            return { 0, false };
+    }
+    return { static_cast<int>(ret), !*end };
 }
 
 } // namespace bthelper
