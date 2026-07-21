@@ -248,7 +248,7 @@ int handle_exec(int con,
         close(con);
         exit(exec_child(exec_args, addr));
     }
-    auto rx = std::make_unique<TelnetDecoderBuffer>(
+    auto rx = std::make_shared<TelnetDecoderBuffer>(
         [amaster](uint16_t rows, uint16_t cols) {
             struct winsize ws {
             };

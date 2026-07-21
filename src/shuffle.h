@@ -22,7 +22,7 @@ class Shuffler
 public:
     using watch_handler_t = std::function<void(int)>;
 
-    void copy(int src, int dst, std::unique_ptr<Buffer>&& buf = nullptr, int escape = -1);
+    void copy(int src, int dst, std::shared_ptr<Buffer> buf = nullptr, int escape = -1);
     void watch(int fd, watch_handler_t);
     void run();
 
@@ -30,7 +30,7 @@ private:
     class Stream
     {
     public:
-        Stream(int src, int dst, std::unique_ptr<Buffer>&& buf, int esc);
+        Stream(int src, int dst, std::shared_ptr<Buffer> buf, int esc);
         int src() const { return src_; }
         int dst() const { return dst_; };
         bool empty() const { return buf_->peek().empty(); }
@@ -43,7 +43,7 @@ private:
         // fds unowned.
         int src_ = -1;
         int dst_ = -1;
-        std::unique_ptr<Buffer> buf_;
+        std::shared_ptr<Buffer> buf_;
         int esc_;
     };
 

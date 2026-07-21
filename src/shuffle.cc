@@ -61,10 +61,10 @@ size_t do_write(int fd, const ustring_view data)
 }
 } // namespace
 
-void Shuffler::copy(int src, int dst, std::unique_ptr<Buffer>&& buf, int esc)
+void Shuffler::copy(int src, int dst, std::shared_ptr<Buffer> buf, int esc)
 {
     if (!buf) {
-        buf = std::make_unique<RawBuffer>();
+        buf = std::make_shared<RawBuffer>();
     }
     streams_.emplace_back(src, dst, std::move(buf), esc);
 }
@@ -163,7 +163,7 @@ void Shuffler::run()
     }
 }
 
-Shuffler::Stream::Stream(int src, int dst, std::unique_ptr<Buffer>&& buf, int esc)
+Shuffler::Stream::Stream(int src, int dst, std::shared_ptr<Buffer> buf, int esc)
     : src_(src), dst_(dst), buf_(std::move(buf)), esc_(esc)
 {
 }

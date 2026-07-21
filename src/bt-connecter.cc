@@ -176,22 +176,25 @@ int wrapmain(int argc, char** argv)
     Shuffler shuf;
 
     if (do_terminal) {
-        auto txbuf = std::make_unique<TelnetEncoderBuffer>();
+        auto txbuf = std::make_shared<TelnetEncoderBuffer>();
         send_window(STDIN_FILENO, txbuf.get());
 
         auto sigfd = setup_signalfd();
-        shuf.watch(sigfd, [sigfd, txbuf = txbuf.get()](int) {
-            send_window(STDIN_FILENO, txbuf);
+        const std::weak_ptr<TelnetEncoderBuffer> weak_txbuf = txbuf;
+        shuf.watch(sigfd, [sigfd, weak_txbuf](int) {
             struct signalfd_siginfo tmp;
             if (-1 == read(sigfd, &tmp, sizeof tmp)) {
                 perror("read(signalfd)");
+            }
+            if (const auto buf = weak_txbuf.lock()) {
+                send_window(STDIN_FILENO, buf.get());
             }
         });
 
         signal(SIGINT, sigint_handler);
         set_raw_terminal(STDIN_FILENO);
 
-        // shuf.copy(sock, STDOUT_FILENO, std::make_unique<TelnetEncoderBuffer>());
+        // shuf.copy(sock, STDOUT_FILENO, std::make_shared<TelnetEncoderBuffer>());
         shuf.copy(sock, STDOUT_FILENO);
         shuf.copy(STDIN_FILENO, sock, std::move(txbuf), escape);
     } else {
