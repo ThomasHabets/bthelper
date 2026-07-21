@@ -243,7 +243,10 @@ int handle_exec(int con,
                 const std::string& addr)
 {
     int amaster;
-    const auto pid = forkpty(&amaster, NULL, NULL, NULL);
+    struct winsize initial_size {};
+    initial_size.ws_row = 24;
+    initial_size.ws_col = 80;
+    const auto pid = forkpty(&amaster, NULL, NULL, &initial_size);
     if (pid == -1) {
         perror("forkpty()");
         return EXIT_FAILURE;
