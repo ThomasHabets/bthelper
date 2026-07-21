@@ -163,8 +163,7 @@ void Shuffler::run()
             if (FD_ISSET(s.src(), &rfds)) {
                 auto buf = do_read(s.src());
                 if (buf.empty()) {
-                    streams_.erase(streams_.begin() + static_cast<ssize_t>(c));
-                    continue;
+                    return;
                 }
                 s.write(buf);
                 if (s.check_esc()) {
