@@ -389,6 +389,10 @@ int wrapmain(int argc, char** argv)
         };
         socklen_t socklen = sizeof(raddr);
         const int con = accept(sock, reinterpret_cast<sockaddr*>(&raddr), &socklen);
+        if (con < 0) {
+            std::cerr << "accept() failed: " << strerror(errno) << "\n";
+            continue;
+        }
         const auto remote = stringify_addr(&raddr.rc_bdaddr);
         if (verbose) {
             std::cerr << remote << " Client connected\n";
