@@ -53,7 +53,7 @@ void usage(const char* av0, int err)
     exit(err);
 }
 
-std::pair<std::string, std::string> hostport_split(const std::string& in)
+[[nodiscard]] std::pair<std::string, std::string> hostport_split(const std::string& in)
 {
     const auto count = std::count(in.begin(), in.end(), ':');
     if (count == 0) {
@@ -82,7 +82,7 @@ std::pair<std::string, std::string> hostport_split(const std::string& in)
     return { host1.substr(1, host1.size() - 2), port };
 }
 
-int tcp_connect(const std::string& target)
+[[nodiscard]] int tcp_connect(const std::string& target)
 {
     const auto hostport = hostport_split(target);
     const auto host = hostport.first;
@@ -124,7 +124,7 @@ int tcp_connect(const std::string& target)
 
 
 // ttyname() except with "/dev" stripped.
-std::string xttyname(int fd)
+[[nodiscard]] std::string xttyname(int fd)
 {
     char buf[PATH_MAX] = { 0 };
     const auto err = ttyname_r(fd, buf, sizeof buf);
@@ -180,7 +180,7 @@ void connection(int sock, std::string_view remote, const std::string& target)
     }
 }
 
-std::vector<const char*> exec_c_args(const std::vector<std::string>& in)
+[[nodiscard]] std::vector<const char*> exec_c_args(const std::vector<std::string>& in)
 {
     std::vector<const char*> ret;
     for (const auto& s : in) {
@@ -191,7 +191,7 @@ std::vector<const char*> exec_c_args(const std::vector<std::string>& in)
 }
 
 
-std::string subst(const std::string& from, const std::string& to, std::string s)
+[[nodiscard]] std::string subst(const std::string& from, const std::string& to, std::string s)
 {
     for (;;) {
         auto pos = s.find(from);
@@ -202,9 +202,9 @@ std::string subst(const std::string& from, const std::string& to, std::string s)
     }
 }
 
-std::vector<std::string> substitute_args(const std::vector<std::string>& in,
-                                         const std::string& term,
-                                         const std::string& addr)
+[[nodiscard]] std::vector<std::string> substitute_args(const std::vector<std::string>& in,
+                                                       const std::string& term,
+                                                       const std::string& addr)
 {
     std::vector<std::string> ret;
     for (const auto& s : in) {
@@ -237,10 +237,10 @@ int exec_child(const std::vector<std::string>& exec_args, const std::string& add
 }
 
 
-int handle_exec(int con,
-                std::string_view remote,
-                const std::vector<std::string>& exec_args,
-                const std::string& addr)
+[[nodiscard]] int handle_exec(int con,
+                              std::string_view remote,
+                              const std::vector<std::string>& exec_args,
+                              const std::string& addr)
 {
     int amaster;
     struct winsize initial_size {};
@@ -312,7 +312,7 @@ int handle_exec(int con,
 
 } // namespace
 
-int wrapmain(int argc, char** argv)
+[[nodiscard]] int wrapmain(int argc, char** argv)
 {
     int channel = -1;
     std::string target;
@@ -410,7 +410,7 @@ int wrapmain(int argc, char** argv)
         // TODO: log remote address
         // TODO: fork.
         if (do_exec) {
-            handle_exec(con, remote, exec_args, remote);
+            static_cast<void>(handle_exec(con, remote, exec_args, remote));
         } else {
             connection(con, remote, target);
         }

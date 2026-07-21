@@ -54,7 +54,7 @@ void usage(const char* av0, int err)
     exit(err);
 }
 
-int setup_signalfd()
+[[nodiscard]] int setup_signalfd()
 {
     sigset_t mask;
     sigemptyset(&mask);
@@ -104,7 +104,7 @@ void set_raw_terminal(int terminal)
 
 } // namespace
 
-int wrapmain(int argc, char** argv)
+[[nodiscard]] int wrapmain(int argc, char** argv)
 {
     bool do_terminal = false;
     {

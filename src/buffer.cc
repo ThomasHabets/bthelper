@@ -33,21 +33,21 @@ constexpr uint8_t iac_pong = 3;
 } // namespace
 
 // Integer promotion rules are so stupid.
-uint16_t build_u16(uint8_t high, uint8_t low)
+[[nodiscard]] uint16_t build_u16(uint8_t high, uint8_t low)
 {
     uint32_t h = static_cast<uint32_t>(high) << 8;
     return static_cast<uint16_t>(h) | low;
 }
 
 // Integer promotion rules are so stupid.
-std::pair<uint8_t, uint8_t> unbuild_u16(uint16_t v)
+[[nodiscard]] std::pair<uint8_t, uint8_t> unbuild_u16(uint16_t v)
 {
         uint32_t high = static_cast<uint32_t>(v) >> 8;
         return {static_cast<uint8_t>(high), static_cast<uint8_t>(v)};
 }
 
 // Integer promotion rules are so stupid.
-std::vector<uint8_t> unbuild_u32(uint32_t v)
+[[nodiscard]] std::vector<uint8_t> unbuild_u32(uint32_t v)
 {
         uint8_t b0 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 24);
         uint8_t b1 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 16);

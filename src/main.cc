@@ -18,7 +18,7 @@ limitations under the License.
 #include <csignal>
 #include <iostream>
 
-extern int wrapmain(int argc, char** argv);
+[[nodiscard]] extern int wrapmain(int argc, char** argv);
 
 namespace {
 

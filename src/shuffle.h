@@ -32,13 +32,13 @@ private:
     {
     public:
         Stream(int src, int dst, std::shared_ptr<Buffer> buf, std::optional<uint8_t> esc);
-        int src() const { return src_; }
-        int dst() const { return dst_; };
-        bool empty() const { return buf_->peek().empty(); }
-        ustring_view peek() const { return buf_->peek(); }
+        [[nodiscard]] int src() const { return src_; }
+        [[nodiscard]] int dst() const { return dst_; };
+        [[nodiscard]] bool empty() const { return buf_->peek().empty(); }
+        [[nodiscard]] ustring_view peek() const { return buf_->peek(); }
         void write(const std::vector<uint8_t>& v) { buf_->write(v); }
         void ack(size_t n) { buf_->ack(n); }
-        bool check_esc(const std::vector<uint8_t>& input) const;
+        [[nodiscard]] bool check_esc(const std::vector<uint8_t>& input) const;
 
     private:
         // fds unowned.

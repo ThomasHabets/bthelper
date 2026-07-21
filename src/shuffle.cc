@@ -25,7 +25,7 @@ limitations under the License.
 #include <sys/select.h>
 
 namespace {
-bool set_nonblock(int fd)
+[[nodiscard]] bool set_nonblock(int fd)
 {
     const int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) {
@@ -39,7 +39,7 @@ bool set_nonblock(int fd)
     return true;
 }
 
-std::vector<uint8_t> do_read(int fd)
+[[nodiscard]] std::vector<uint8_t> do_read(int fd)
 {
     constexpr size_t read_size = 64 * 1024;
     std::vector<uint8_t> ret(read_size);
@@ -56,7 +56,7 @@ std::vector<uint8_t> do_read(int fd)
     }
 }
 
-size_t do_write(int fd, const ustring_view data)
+[[nodiscard]] size_t do_write(int fd, const ustring_view data)
 {
     for (;;) {
         const auto rc = write(fd, data.data(), data.size());
@@ -88,7 +88,9 @@ void Shuffler::run()
 {
     // Set nonblock.
     for (const auto& s : streams_) {
-        set_nonblock(s.src());
+        if (!set_nonblock(s.src())) {
+            throw std::runtime_error("Unable to set nonblocking mode");
+        }
     }
 
     // Event loop.

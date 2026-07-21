@@ -35,10 +35,10 @@ struct sockaddr_rc {
 };
 constexpr int BTPROTO_RFCOMM = 3;
 
-bool parse_addr(const std::string& in, bdaddr_t* out);
-std::string stringify_addr(const bdaddr_t* out);
+[[nodiscard]] bool parse_addr(const std::string& in, bdaddr_t* out);
+[[nodiscard]] std::string stringify_addr(const bdaddr_t* out);
 
-std::pair<int, bool> xatoi(const char* v);
+[[nodiscard]] std::pair<int, bool> xatoi(const char* v);
 
 
 } // namespace bthelper

@@ -43,18 +43,18 @@ public:
     }
 
     // Invalidated on any non-const
-    virtual ustring_view peek() const = 0;
+    [[nodiscard]] virtual ustring_view peek() const = 0;
 
     virtual void ack(size_t n) = 0;
 
-    bool empty() const { return peek().empty(); }
+    [[nodiscard]] bool empty() const { return peek().empty(); }
 };
 
 class RawBuffer : public Buffer
 {
 public:
     void write(ustring_view sv) override;
-    ustring_view peek() const override;
+    [[nodiscard]] ustring_view peek() const override;
     void ack(size_t n) override;
 
 private:
@@ -67,7 +67,7 @@ class TelnetEncoderBuffer : public Buffer
 {
 public:
     void write(ustring_view sv) override;
-    ustring_view peek() const override;
+    [[nodiscard]] ustring_view peek() const override;
     void ack(size_t n) override;
 
     void ping(uint32_t cookie);
@@ -91,7 +91,7 @@ public:
     }
 
     void write(ustring_view sv) override;
-    ustring_view peek() const override;
+    [[nodiscard]] ustring_view peek() const override;
     void ack(size_t n) override;
 
 private:
