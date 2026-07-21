@@ -43,7 +43,7 @@ uint16_t build_u16(uint8_t high, uint8_t low)
 std::pair<uint8_t, uint8_t> unbuild_u16(uint16_t v)
 {
         uint32_t high = static_cast<uint32_t>(v) >> 8;
-        return {static_cast<uint8_t>(high), static_cast<uint8_t>(v & 0xff)};
+        return {static_cast<uint8_t>(high), static_cast<uint8_t>(v)};
 }
 
 // Integer promotion rules are so stupid.
@@ -52,7 +52,7 @@ std::vector<uint8_t> unbuild_u32(uint32_t v)
         uint8_t b0 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 24);
         uint8_t b1 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 16);
         uint8_t b2 = static_cast<uint8_t>(static_cast<uint32_t>(v) >> 8);
-        return {b0,b1,b2, static_cast<uint8_t>(v & 0xff)};
+        return {b0,b1,b2, static_cast<uint8_t>(v)};
 }
 
 void TelnetDecoderBuffer::write(std::string_view sv)
