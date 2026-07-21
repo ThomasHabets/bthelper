@@ -22,10 +22,10 @@ limitations under the License.
 
 namespace {
 namespace telnet {
-constexpr char iac = static_cast<char>(255);
-constexpr char iac_window_size = 1;
-constexpr char iac_ping = 2;
-constexpr char iac_pong = 3;
+constexpr uint8_t iac = 255;
+constexpr uint8_t iac_window_size = 1;
+constexpr uint8_t iac_ping = 2;
+constexpr uint8_t iac_pong = 3;
 } // namespace telnet
 
 } // namespace
@@ -54,7 +54,7 @@ void TelnetDecoderBuffer::write(std::string_view sv)
         }
 
         // Check if iac buffer is full.
-        const auto type = static_cast<char>(tbuf[1]);
+        const auto type = tbuf[1];
         const auto siz = iac_sizes.find(type);
         if (siz == iac_sizes.end()) {
             throw std::runtime_error("invalid iac");
