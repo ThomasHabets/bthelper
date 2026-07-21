@@ -41,6 +41,7 @@ struct termios orig_tio;
 sig_atomic_t reset_terminal = 0;
 constexpr uint8_t escape = 0x1d; // ^]
 
+[[noreturn]]
 void usage(const char* av0, int err)
 {
     fprintf(stderr,
@@ -95,7 +96,7 @@ void set_raw_terminal(int terminal)
     orig_tio = tio;
     reset_terminal = 1;
     cfmakeraw(&tio);
-    tio.c_lflag &= ~ECHO;
+    tio.c_lflag &= (tcflag_t)~ECHO;
     if (tcsetattr(terminal, TCSADRAIN, &tio)) {
         throw std::system_error(
             errno, std::generic_category(), "tcsetattr(raw minus echo)");
@@ -130,14 +131,20 @@ int wrapmain(int argc, char** argv)
     // Args.
     const std::string addrs = argv[optind];
     const std::string chans = argv[optind + 1];
-    int channel;
+    uint8_t channel;
     {
         const auto ch_ok = xatoi(chans.c_str());
         if (!ch_ok.second) {
             fprintf(stderr, "Unable to parse channel number: %s\n", chans.c_str());
             exit(EXIT_FAILURE);
         }
-        channel = ch_ok.first;
+        // TODO: should be something like 30, but mostly we're checking that it
+        // fits in uint8_t.
+        if (ch_ok.first > 60) {
+            fprintf(stderr, "Channel number out of range: %s\n", chans.c_str());
+            exit(EXIT_FAILURE);
+        }
+        channel = (uint8_t)ch_ok.first;
     }
 
     int sock = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);

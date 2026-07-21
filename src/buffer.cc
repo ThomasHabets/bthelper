@@ -32,7 +32,7 @@ constexpr uint8_t iac_pong = 3;
 
 void TelnetDecoderBuffer::write(std::string_view sv)
 {
-    static const std::map<char, int> iac_sizes = {
+    static const std::map<char, size_t> iac_sizes = {
         { telnet::iac, 2 },
         { telnet::iac_window_size, 6 },
         { telnet::iac_ping, 6 },

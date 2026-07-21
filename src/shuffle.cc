@@ -127,7 +127,7 @@ void Shuffler::run()
         }
 
         // Check for errors.
-        for (int c = 0; c < streams_.size();) {
+        for (size_t c = 0; c < streams_.size();) {
             auto& s = streams_[c];
             if (FD_ISSET(s.src(), &efds) || FD_ISSET(s.dst(), &efds)) {
                 streams_.erase(streams_.begin() + c);
@@ -144,7 +144,7 @@ void Shuffler::run()
         }
 
         // Read.
-        for (int c = 0; c < streams_.size();) {
+        for (size_t c = 0; c < streams_.size();) {
             auto& s = streams_[c];
 
             if (FD_ISSET(s.src(), &rfds)) {

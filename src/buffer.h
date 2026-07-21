@@ -93,9 +93,9 @@ public:
     void ack(size_t n) override;
 
 private:
+    window_size_handler_t winch_;
     ping_handler_t ping_;
     ping_handler_t pong_;
-    window_size_handler_t winch_;
     std::vector<char> data_;
     std::vector<uint8_t> iac_buffer_;
 };
