@@ -59,13 +59,12 @@ int setup_signalfd()
     sigset_t mask;
     sigemptyset(&mask);
     sigaddset(&mask, SIGWINCH);
+    if (-1 == sigprocmask(SIG_BLOCK, &mask, nullptr)) {
+        throw std::system_error(errno, std::generic_category(), "sigprocmask()");
+    }
     const int fd = signalfd(-1, &mask, SFD_NONBLOCK);
     if (-1 == fd) {
         throw std::system_error(errno, std::generic_category(), "signalfd()");
-    }
-    if (-1 == sigprocmask(SIG_BLOCK, &mask, nullptr)) {
-        close(fd);
-        throw std::system_error(errno, std::generic_category(), "sigprocmask()");
     }
     return fd;
 }
@@ -177,9 +176,9 @@ int wrapmain(int argc, char** argv)
 
     if (do_terminal) {
         auto txbuf = std::make_shared<TelnetEncoderBuffer>();
+        auto sigfd = setup_signalfd();
         send_window(STDIN_FILENO, txbuf.get());
 
-        auto sigfd = setup_signalfd();
         const std::weak_ptr<TelnetEncoderBuffer> weak_txbuf = txbuf;
         shuf.watch(sigfd, [sigfd, weak_txbuf](int) {
             struct signalfd_siginfo tmp;
