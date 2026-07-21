@@ -140,7 +140,7 @@ int wrapmain(int argc, char** argv)
         }
         // TODO: should be something like 30, but mostly we're checking that it
         // fits in uint8_t.
-        if (ch_ok.first > 60) {
+        if (ch_ok.first > 60 || ch_ok.first < 0) {
             fprintf(stderr, "Channel number out of range: %s\n", chans.c_str());
             exit(EXIT_FAILURE);
         }
