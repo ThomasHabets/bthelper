@@ -38,7 +38,7 @@ private:
         ustring_view peek() const { return buf_->peek(); }
         void write(std::string_view v) { buf_->write(v); }
         void ack(size_t n) { buf_->ack(n); }
-        bool check_esc();
+        bool check_esc(std::string_view input) const;
 
     private:
         // fds unowned.

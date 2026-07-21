@@ -165,10 +165,10 @@ void Shuffler::run()
                 if (buf.empty()) {
                     return;
                 }
-                s.write(buf);
-                if (s.check_esc()) {
+                if (s.check_esc(buf)) {
                     return;
                 }
+                s.write(buf);
             }
             c++;
         }
@@ -180,14 +180,15 @@ Shuffler::Stream::Stream(int src, int dst, std::shared_ptr<Buffer> buf, std::opt
 {
 }
 
-bool Shuffler::Stream::check_esc()
+bool Shuffler::Stream::check_esc(std::string_view input) const
 {
     if (!esc_.has_value()) {
         return false;
     }
     const auto esc = esc_.value();
-    const auto b = buf_->peek();
-    return std::find(b.begin(), b.end(), esc) != b.end();
+    return std::any_of(input.begin(), input.end(), [esc](char ch) {
+        return static_cast<uint8_t>(ch) == esc;
+    });
 }
 
 #if 0
