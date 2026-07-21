@@ -65,15 +65,16 @@ void TelnetDecoderBuffer::write(std::string_view sv)
     };
     std::vector<uint8_t> to_add;
     std::vector<uint8_t> tbuf = iac_buffer_;
-    for (const auto& ch : sv) {
+    for (const auto& ch2 : sv) {
+        const auto ch = static_cast<uint8_t>(ch2);
         // Normal data.
         if (tbuf.empty() && (ch != telnet::iac)) {
-            to_add.push_back((uint8_t)ch);
+            to_add.push_back(ch);
             continue;
         }
 
         // Add to iac buffer.
-        tbuf.push_back(static_cast<uint8_t>(ch));
+        tbuf.push_back(ch);
         if (tbuf.size() == 1) {
             continue;
         }
