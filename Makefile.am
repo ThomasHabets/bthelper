@@ -1,6 +1,7 @@
 AUTOMAKE_OPTIONS=foreign
 DISTCLEANFILES=*~
 AM_CPPFLAGS=-I$(builddir)
+ACLOCAL_AMFLAGS=-I m4
 
 bin_PROGRAMS=bt-connecter bt-listener
 
